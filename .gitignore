@@ -1,0 +1,39 @@
+# ── Claude Skill Harness ──
+# 이 섹션은 claude-skill-harness install.js가 자동 생성합니다.
+# 하네스/스킬/MCP 관련 파일을 git 추적에서 제외합니다.
+
+# Harness core
+# 원격 공개 금지 정책: .claude 전체 무조건 배제 (orphan-guard.json negation 제거)
+.claude/
+CLAUDE.md
+CHANGELOG.md
+UPGRADE.md
+
+# Harness documents — docs 전체 배제 (원격 공개 금지 정책)
+docs/
+
+# Harness installer / backup
+install.js
+claude-skill-harness*/
+.skill-set-backup*
+# ── /Claude Skill Harness ──
+
+# ── Visual Studio / .NET ──
+.vs/
+bin/
+obj/
+*.user
+TestResults/
+
+# ── Secrets (테스트 프록시 등 — 절대 커밋 금지) ──
+.env
+.env.*
+.env.local
+.env.*.local
+
+# 번들 엔진 바이너리 (405MB, 배포시 별도 조달)
+Multiplatform-Downloader/tools/
+# Inno Setup 설치기 산출물
+Installer/publish/
+Installer/Output/
+.playwright-mcp/

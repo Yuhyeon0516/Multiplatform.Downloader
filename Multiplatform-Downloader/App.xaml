@@ -1,0 +1,22 @@
+<Application x:Class="Multiplatform_Downloader.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Multiplatform_Downloader"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ui:ThemesDictionary Theme="Dark" />
+                <ui:ControlsDictionary />
+                <!-- 와이어프레임 팔레트 — ThemeService가 라이트/다크로 교체한다 -->
+                <ResourceDictionary Source="pack://application:,,,/Themes/WireframeDark.xaml" />
+                <!-- 리디자인 공용 리소스(FR-U1.2/U1.4) — 아이콘 Geometry · 공용 버튼 스타일 -->
+                <ResourceDictionary Source="pack://application:,,,/Themes/Icons.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Themes/Controls.xaml" />
+                <ResourceDictionary>
+                    <local:Bootstrapper x:Key="Bootstrapper" />
+                </ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

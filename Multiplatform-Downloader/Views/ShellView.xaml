@@ -1,0 +1,594 @@
+<Window x:Class="Multiplatform_Downloader.Views.ShellView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:cal="http://caliburnmicro.com"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:Multiplatform_Downloader.Views"
+        mc:Ignorable="d"
+        Background="{DynamicResource WfSurfaceBrush}"
+        TextElement.Foreground="{DynamicResource WfInkBrush}"
+        FontFamily="Segoe UI"
+        Icon="/Assets/app.ico"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        AllowDrop="True" Drop="OnWindowDrop" DragOver="OnWindowDragOver"
+        Title="샤샤룽 다운로더" Height="720" Width="1040" MinHeight="560" MinWidth="880">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- 카드 버튼 3종(CardButton/Primary/Danger)은 Themes/Controls.xaml로 추출됨(FR-U1.4) -->
+    </Window.Resources>
+
+    <!-- 2열 구조(FR-U2.1): 좌측 레일 + 본문. 기존 x:Name·Message.Attach는 전량 보존(시뮬 CAL 감시) -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="56"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ── 좌측 레일: 큐(현재 화면) · 로그 / 테마 · 설정 · 정보 ── -->
+        <Border Grid.Column="0" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,0,1,0"
+                Background="{DynamicResource WfSurfaceBrush}">
+            <DockPanel Margin="0,10">
+                <StackPanel DockPanel.Dock="Bottom">
+                    <!-- 아이콘 = 전환될 대상: 라이트→달(다크로) · 다크→해(라이트로). 시스템 테마는 설정 창에서 -->
+                    <Button x:Name="ToggleTheme" Style="{StaticResource RailButton}" ToolTip="{Binding ThemeTooltip}">
+                        <Grid>
+                            <Viewbox Width="18" Height="18"
+                                     Visibility="{Binding ShowMoonIcon, Converter={StaticResource BoolToVis}}">
+                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoMoon}"/>
+                            </Viewbox>
+                            <Viewbox Width="18" Height="18"
+                                     Visibility="{Binding ShowSunIcon, Converter={StaticResource BoolToVis}}">
+                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoSun}"/>
+                            </Viewbox>
+                        </Grid>
+                    </Button>
+                    <Button x:Name="OpenSettings" Style="{StaticResource RailButton}" ToolTip="설정">
+                        <Viewbox Width="18" Height="18">
+                            <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoSettings}"/>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="ShowAbout" Style="{StaticResource RailButton}" ToolTip="프로그램 정보">
+                        <Viewbox Width="18" Height="18">
+                            <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoInfo}"/>
+                        </Viewbox>
+                    </Button>
+                </StackPanel>
+                <StackPanel HorizontalAlignment="Center">
+                    <!-- 현재 화면 표시(큐) — 상단 강조 탭 -->
+                    <Border Width="44" Height="44" CornerRadius="10" Background="{DynamicResource WfAccentSoftBrush}"
+                            ToolTip="다운로드 큐">
+                        <Grid>
+                            <Viewbox Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoDownload}"
+                                      Stroke="{DynamicResource WfAccentBrush}"/>
+                            </Viewbox>
+                            <Border CornerRadius="8" Background="{DynamicResource WfPrimaryBrush}" Padding="4,0"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,3,3,0"
+                                    Visibility="{Binding HasItems, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{Binding QueueCount}" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <Button x:Name="ToggleLog" Style="{StaticResource RailButton}" ToolTip="실시간 로그">
+                        <Viewbox Width="18" Height="18">
+                            <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoTerminal}"/>
+                        </Viewbox>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ── 본문 ── -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더(FR-U2.1): URL 입력 + [추가] + [일괄]만 — 입력창이 항상 최대 폭 확보 -->
+            <Border Grid.Row="0" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,0,0,1" Padding="14,12">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" x:Name="OpenAddLinks" Style="{StaticResource IconButton}"
+                            Width="34" Height="34" ToolTip="여러 링크 한 번에 추가">
+                        <Viewbox Width="16" Height="16">
+                            <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoLayers}"/>
+                        </Viewbox>
+                    </Button>
+                    <!-- 클립보드 붙여넣기 — 큐가 있어도 항상 접근 가능(사용자 피드백 2026-08-03:
+                         빈 상태 CTA만으로는 리스트가 생긴 뒤 진입점이 사라짐) -->
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}"
+                            Width="34" Height="34" cal:Message.Attach="PasteFromClipboard"
+                            ToolTip="클립보드의 링크를 바로 추가">
+                        <Viewbox Width="16" Height="16">
+                            <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoClipboard}"/>
+                        </Viewbox>
+                    </Button>
+                    <Button DockPanel.Dock="Right" x:Name="AddUrls" Style="{StaticResource CardButtonPrimary}"
+                            Height="34" MinWidth="76" Margin="8,0,0,0" ToolTip="입력한 URL을 큐에 추가">
+                        <StackPanel Orientation="Horizontal">
+                            <Viewbox Width="14" Height="14" Margin="0,0,6,0">
+                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoPlus}" Stroke="White"/>
+                            </Viewbox>
+                            <TextBlock Text="추가" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <TextBox x:Name="UrlInput" Padding="10,7" VerticalContentAlignment="Center" FontSize="13" Height="34"
+                             ToolTip="영상 URL을 붙여넣으세요 (여러 줄 = 일괄 등록 · 창에 끌어다 놓아도 등록됩니다)"/>
+                </DockPanel>
+            </Border>
+
+            <!-- 필터 바(FR-U2.2): 상태 칩 + 검색 + 전체 정지/재개 + 선택 액션 -->
+            <Border Grid.Row="1" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,0,0,1" Padding="14,8">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <!-- WPF-UI TextBox — 플레이스홀더로 용도 명시(사용자 피드백: 빈 박스가 뭔지 모름) -->
+                        <ui:TextBox x:Name="SearchText" Width="150" Height="30" Padding="8,4,8,0" FontSize="12"
+                                    VerticalContentAlignment="Center" PlaceholderText="제목·URL 검색"
+                                    ToolTip="제목이나 URL로 큐를 검색합니다"/>
+                        <Button x:Name="PauseAll" Style="{StaticResource IconButton}" ToolTip="모두 일시정지">
+                            <Viewbox Width="14" Height="14">
+                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoPause}"/>
+                            </Viewbox>
+                        </Button>
+                        <Button x:Name="ResumeAll" Style="{StaticResource IconButton}" ToolTip="모두 재개">
+                            <Viewbox Width="13" Height="13">
+                                <Path Style="{StaticResource WfIconFill}" Data="{StaticResource IcoPlay}"/>
+                            </Viewbox>
+                        </Button>
+                        <!-- FR-U4.3: 고아였던 StartAll을 [모두 받기]로 배선(시뮬 CAL-122 이슈 해소) -->
+                        <Button x:Name="StartAll" Style="{StaticResource CardButton}" Content="모두 받기"
+                                ToolTip="받기 준비된 항목을 모두 시작"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="FilterAll" Style="{StaticResource ChipButton}" Tag="{Binding FilterAllTag}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="전체 "/><TextBlock Text="{Binding QueueCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="FilterActive" Style="{StaticResource ChipButton}" Tag="{Binding FilterActiveTag}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="진행 "/><TextBlock Text="{Binding DownloadingCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="FilterWaiting" Style="{StaticResource ChipButton}" Tag="{Binding FilterWaitingTag}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="대기 "/><TextBlock Text="{Binding WaitingCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="FilterDone" Style="{StaticResource ChipButton}" Tag="{Binding FilterDoneTag}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="완료 "/><TextBlock Text="{Binding CompletedCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="FilterFailed" Style="{StaticResource ChipButton}" Tag="{Binding FilterFailedTag}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="실패 "/><TextBlock Text="{Binding FailedCount}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- 본문: 빈 상태 or 큐 -->
+            <Grid Grid.Row="2" Background="{DynamicResource WfBgBrush}">
+
+                <!-- 빈 상태(FR-U2.5): 드롭존 + CTA -->
+                <Grid Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="520">
+                        <Border BorderBrush="{DynamicResource WfLine2Brush}" BorderThickness="1.5"
+                                Background="{DynamicResource WfSurfaceBrush}" CornerRadius="16" Padding="28,26">
+                            <StackPanel>
+                                <Border Width="64" Height="64" CornerRadius="18"
+                                        Background="{DynamicResource WfAccentSoftBrush}" HorizontalAlignment="Center">
+                                    <Viewbox Width="30" Height="30">
+                                        <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoUploadCloud}"
+                                              Stroke="{DynamicResource WfAccentBrush}"/>
+                                    </Viewbox>
+                                </Border>
+                                <TextBlock Text="받을 영상이 아직 없습니다" FontSize="16" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" Margin="0,16,0,6"/>
+                                <TextBlock Text="링크를 붙여넣거나 이 창에 끌어다 놓으세요" FontSize="12.5"
+                                           Foreground="{DynamicResource WfInk2Brush}" HorizontalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                                    <Button x:Name="PasteFromClipboard" Style="{StaticResource CardButtonPrimary}" Height="34">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="14" Height="14" Margin="0,0,6,0">
+                                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoClipboard}" Stroke="White"/>
+                                            </Viewbox>
+                                            <TextBlock Text="클립보드에서 붙여넣기" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource CardButton}" Height="34" Margin="8,0,0,0"
+                                            cal:Message.Attach="OpenAddLinks">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="14" Height="14" Margin="0,0,6,0">
+                                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoLayers}"/>
+                                            </Viewbox>
+                                            <TextBlock Text="여러 링크 입력" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock Text="한 번에 최대 15개 · 큐 최대 50개" FontSize="11"
+                                           Foreground="{DynamicResource WfInk2Brush}" HorizontalAlignment="Center"
+                                           Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 지원 플랫폼 칩 (전체 10종) -->
+                        <WrapPanel HorizontalAlignment="Center" Margin="0,18,0,0" MaxWidth="520">
+                            <WrapPanel.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="14"/>
+                                    <Setter Property="Background" Value="{DynamicResource WfChipBrush}"/>
+                                    <Setter Property="Padding" Value="10,4"/>
+                                    <Setter Property="Margin" Value="3,3"/>
+                                </Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Width" Value="8"/>
+                                    <Setter Property="Height" Value="8"/>
+                                    <Setter Property="Margin" Value="0,0,6,0"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontSize" Value="11"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource WfInk2Brush}"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </WrapPanel.Resources>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#EF4444"/><TextBlock Text="YouTube"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#D946EF"/><TextBlock Text="Instagram"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#38BDF8"/><TextBlock Text="TikTok"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#F43F5E"/><TextBlock Text="샤오홍슈"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#8A8A8A"/><TextBlock Text="스레드"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#1877F2"/><TextBlock Text="Facebook"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#71767B"/><TextBlock Text="X"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#FE2C55"/><TextBlock Text="도우인"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#FF4500"/><TextBlock Text="Reddit"/></StackPanel></Border>
+                            <Border><StackPanel Orientation="Horizontal"><Ellipse Fill="#E60023"/><TextBlock Text="Pinterest"/></StackPanel></Border>
+                        </WrapPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                            <Viewbox Width="13" Height="13" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoZap}"
+                                      Stroke="{DynamicResource WfInk2Brush}"/>
+                            </Viewbox>
+                            <TextBlock Text="Chrome에서 영상 링크를 우클릭해 바로 보낼 수도 있습니다" FontSize="11.5"
+                                       Foreground="{DynamicResource WfInk2Brush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 다운로드 큐: 전체선택 헤더(FR-D3.2) + 카드 목록 -->
+                <DockPanel Visibility="{Binding HasItems, Converter={StaticResource BoolToVis}}">
+                    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,0,0,1"
+                            Background="{DynamicResource WfSurfaceBrush}" Padding="18,7,16,7">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding SelectionSummary}" FontSize="11.5"
+                                       Foreground="{DynamicResource WfInk2Brush}" VerticalAlignment="Center"/>
+                            <CheckBox Content="전체 선택" FontSize="12" VerticalAlignment="Center"
+                                      IsThreeState="False"
+                                      IsChecked="{Binding SelectAllState, Mode=TwoWay}"
+                                      ToolTip="모든 항목 선택/해제"/>
+                        </DockPanel>
+                    </Border>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,12,16,58">
+            <ItemsControl x:Name="Items">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{DynamicResource WfSurfaceBrush}" BorderBrush="{DynamicResource WfLineBrush}"
+                                BorderThickness="1" CornerRadius="8"
+                                Padding="12" Margin="0,0,0,8"
+                                MouseLeftButtonDown="OnCardMouseDown">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 선택 체크박스 — 모든 상태에서 상시 표시(FR-D3.1) -->
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                          VerticalAlignment="Center" Margin="0,0,12,0"
+                                          ToolTip="선택 받기/선택 삭제 대상에 포함"/>
+
+                                <!-- 썸네일 + 플랫폼 배지 -->
+                                <Grid Grid.Column="1" Width="96" Height="54" Margin="0,0,14,0">
+                                    <Border Background="{DynamicResource WfChipBrush}" CornerRadius="4"/>
+                                    <Viewbox Width="20" Height="20" Opacity="0.4">
+                                        <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoInbox}"
+                                              Stroke="{DynamicResource WfInk2Brush}"/>
+                                    </Viewbox>
+                                    <!-- 썸네일 최종 실패 표시(FR-D1.6) -->
+                                    <Viewbox Width="17" Height="17" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                             Margin="0,0,0,18" ToolTip="{Binding ThumbFailReason}"
+                                             Visibility="{Binding ThumbFailed, Converter={StaticResource BoolToVis}}">
+                                        <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoAlert}"
+                                              Stroke="{DynamicResource WfWarnBrush}"/>
+                                    </Viewbox>
+                                    <!-- 실제 썸네일 (있으면 플레이스홀더를 덮음) -->
+                                    <Border CornerRadius="4" Visibility="{Binding HasThumbnail, Converter={StaticResource BoolToVis}}">
+                                        <Border.Background>
+                                            <ImageBrush ImageSource="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                        </Border.Background>
+                                    </Border>
+                                    <!-- 플랫폼 배지 — 이니셜(FR-U1.3): 폰트 폴백 무관 렌더 -->
+                                    <Border Width="24" Height="24" CornerRadius="12" Background="{Binding PlatformBrush}"
+                                            BorderBrush="{DynamicResource WfSurfaceBrush}" BorderThickness="2"
+                                            HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-6,-6,0,0">
+                                        <TextBlock Text="{Binding PlatformBadge}" Foreground="White" FontSize="8"
+                                                   FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+
+                                <!-- 제목 · 프로그레스 · 서브텍스트 -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding TitleFull}"/>
+                                    <!-- 진행률 미상 구간(분석/병합/첫 진행 전)은 마퀴로 전환 — 멈춘 느낌 방지 -->
+                                    <ProgressBar Value="{Binding Progress, Mode=OneWay}" Maximum="100" Height="6" Margin="0,7"
+                                                 IsIndeterminate="{Binding IsIndeterminate, Mode=OneWay}"
+                                                 Foreground="{Binding ProgressBrush}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:ProgressRing IsIndeterminate="True" Width="14" Height="14"
+                                                         Margin="0,0,6,0" VerticalAlignment="Center"
+                                                         Visibility="{Binding IsIndeterminate, Converter={StaticResource BoolToVis}}"/>
+                                        <TextBlock Text="{Binding SubText}" FontSize="11.5" Opacity="0.7"
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- 상태 · 해상도 · 액션 -->
+                                <StackPanel Grid.Column="3" Margin="14,0,0,0" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"
+                                               FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Right"/>
+                                    <!-- 다운로드 전(Ready/실패)에는 해상도·품질 선택 콤보, 진행/완료 후에는 정적 배지 -->
+                                    <ComboBox ItemsSource="{Binding ResolutionOptions}"
+                                              SelectedItem="{Binding SelectedOption, Mode=TwoWay}"
+                                              DisplayMemberPath="Label"
+                                              MinWidth="96" Margin="0,5" HorizontalAlignment="Right"
+                                              FontSize="11.5" Padding="8,3"
+                                              ToolTip="다운로드 해상도·품질 선택"
+                                              Visibility="{Binding CanChangeResolution, Converter={StaticResource BoolToVis}}"/>
+                                    <Border Background="{DynamicResource WfChipBrush}" CornerRadius="4" Padding="7,2" Margin="0,5"
+                                            HorizontalAlignment="Right"
+                                            Visibility="{Binding ShowResolutionBadge, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="{Binding SelectedResolution}" FontSize="11"/>
+                                    </Border>
+                                    <!-- 주요 액션 1개 + 오버플로(FR-U3.1) — 위치가 상태에 따라 흔들리지 않는다(P-04) -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,2,0,0">
+                                        <Button Style="{StaticResource CardButtonPrimary}" MinWidth="76"
+                                                Content="{Binding PrimaryActionLabel}" cal:Message.Attach="PrimaryAction"
+                                                Visibility="{Binding PrimaryIsAccent, Converter={StaticResource BoolToVis}}"/>
+                                        <Button Style="{StaticResource CardButton}" MinWidth="76"
+                                                Content="{Binding PrimaryActionLabel}" cal:Message.Attach="PrimaryAction"
+                                                Visibility="{Binding PrimaryIsNeutral, Converter={StaticResource BoolToVis}}"/>
+                                        <Button Style="{StaticResource CardButtonDanger}" MinWidth="76"
+                                                Content="{Binding PrimaryActionLabel}" cal:Message.Attach="PrimaryAction"
+                                                Visibility="{Binding PrimaryIsDanger, Converter={StaticResource BoolToVis}}"/>
+                                        <ToggleButton x:Name="OverflowToggle" Style="{StaticResource IconToggle}"
+                                                      ToolTip="{Binding OverflowHint}">
+                                            <Viewbox Width="14" Height="14">
+                                                <Path Style="{StaticResource WfIconFill}" Data="{StaticResource IcoMore}"/>
+                                            </Viewbox>
+                                        </ToggleButton>
+                                        <!-- 오버플로 메뉴: 8개 액션 전부 노출, Can* 게이트로 비활성(FR-U3.4 —
+                                             상태머신은 잘못된 전이에 예외를 던지므로 숨김이 아니라 비활성이 안전) -->
+                                        <Popup IsOpen="{Binding IsChecked, ElementName=OverflowToggle, Mode=TwoWay}"
+                                               PlacementTarget="{Binding ElementName=OverflowToggle}" Placement="Bottom"
+                                               StaysOpen="False" AllowsTransparency="True" HorizontalOffset="-96">
+                                            <Grid Margin="0,4,8,8" MinWidth="128">
+                                                <!-- 그림자 전용 형제 — 메뉴 텍스트 비트맵화 방지 -->
+                                                <Border CornerRadius="8" Background="{DynamicResource WfSurfaceBrush}">
+                                                    <Border.Effect>
+                                                        <DropShadowEffect ShadowDepth="2" BlurRadius="12" Opacity="0.25"/>
+                                                    </Border.Effect>
+                                                </Border>
+                                                <Border Background="{DynamicResource WfSurfaceBrush}"
+                                                        BorderBrush="{DynamicResource WfLine2Brush}" BorderThickness="1"
+                                                        CornerRadius="8" Padding="5"
+                                                        RenderOptions.ClearTypeHint="Enabled">
+                                                <StackPanel>
+                                                    <Button Style="{StaticResource MenuActionButton}" Content="받기"
+                                                            IsEnabled="{Binding CanStartItem}" cal:Message.Attach="StartItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                    <Button Style="{StaticResource MenuActionButton}" Content="일시정지"
+                                                            IsEnabled="{Binding CanPauseItem}" cal:Message.Attach="PauseItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                    <Button Style="{StaticResource MenuActionButton}" Content="재개"
+                                                            IsEnabled="{Binding CanResumeItem}" cal:Message.Attach="ResumeItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                    <Button Style="{StaticResource MenuActionButton}" Content="재시도"
+                                                            IsEnabled="{Binding CanRetryItem}" cal:Message.Attach="RetryItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                    <Button Style="{StaticResource MenuActionButton}" Content="로그인으로 해결"
+                                                            IsEnabled="{Binding CanLoginFixItem}" cal:Message.Attach="LoginFixItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                    <Button Style="{StaticResource MenuActionButton}" Content="재생"
+                                                            IsEnabled="{Binding CanPlayItem}" cal:Message.Attach="PlayItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                    <Button Style="{StaticResource MenuActionButton}" Content="폴더 열기"
+                                                            IsEnabled="{Binding CanOpenFolderItem}" cal:Message.Attach="OpenFolderItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                    <Separator Margin="4,3" Background="{DynamicResource WfLineBrush}"/>
+                                                    <Button Style="{StaticResource MenuActionButtonDanger}" Content="취소"
+                                                            IsEnabled="{Binding CanCancelItem}" cal:Message.Attach="CancelItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                    <Button Style="{StaticResource MenuActionButtonDanger}" Content="삭제"
+                                                            IsEnabled="{Binding CanRemoveItem}" cal:Message.Attach="RemoveItem"
+                                                            Click="OnOverflowActionClick"/>
+                                                </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Popup>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+
+                <!-- 컨텍스트 선택 바(FR-U4.1) — 선택이 있을 때만 떠오르는 알약 바.
+                     삭제 의미는 기존과 동일: 진행 중이면 취소 후 제거(CanRemove ⇔ !IsActive 불변식 시뮬 확인) -->
+                <Grid HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12"
+                      Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+                    <!-- 그림자 전용 형제 — 텍스트가 Effect 서브트리에 들어가면 비트맵화로 흐려진다(사용자 스크린샷) -->
+                    <Border CornerRadius="20" Background="{DynamicResource WfSurfaceBrush}">
+                        <Border.Effect>
+                            <DropShadowEffect ShadowDepth="3" BlurRadius="16" Opacity="0.22"/>
+                        </Border.Effect>
+                    </Border>
+                    <Border Background="{DynamicResource WfSurfaceBrush}"
+                            BorderBrush="{DynamicResource WfLine2Brush}" BorderThickness="1"
+                            CornerRadius="20" Padding="14,5">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding SelectionSummary}" FontSize="12" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <Rectangle Width="1" Height="16" Fill="{DynamicResource WfLineBrush}" Margin="10,0,6,0"/>
+                        <Button x:Name="StartChecked" Style="{StaticResource CardButtonPrimary}"
+                                Content="{Binding StartCheckedLabel}" ToolTip="체크된 항목 일괄 다운로드 시작"/>
+                        <Button x:Name="PauseChecked" Style="{StaticResource CardButton}" Content="정지"
+                                ToolTip="체크된 진행 항목 일시정지"/>
+                        <Button x:Name="DeleteChecked" Style="{StaticResource CardButtonDanger}"
+                                Content="{Binding DeleteCheckedLabel}"
+                                ToolTip="체크된 항목 일괄 삭제 (진행 중이면 취소 후 삭제)"/>
+                        <Button x:Name="ClearSelection" Style="{StaticResource IconButton}" ToolTip="선택 해제">
+                            <Viewbox Width="12" Height="12">
+                                <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoX}"/>
+                            </Viewbox>
+                        </Button>
+                    </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- 상태바(FR-U2.3): 카운트 4종 아이콘+숫자, 클릭=필터. 우측 폴더·동시성 -->
+            <Border Grid.Row="3" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,1,0,0" Padding="10,5">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Viewbox Width="12" Height="12" Margin="0,0,5,0" VerticalAlignment="Center">
+                            <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoFolder}"
+                                  Stroke="{DynamicResource WfInk2Brush}"/>
+                        </Viewbox>
+                        <TextBlock Text="{Binding FolderInfo}" FontSize="11.5" Foreground="{DynamicResource WfInk2Brush}"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="300" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding ConcurrencyInfo}" FontSize="11.5"
+                                   Foreground="{DynamicResource WfInk2Brush}" Margin="14,0,4,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel.Resources>
+                            <Style TargetType="Button" BasedOn="{StaticResource ChipButton}">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Padding" Value="8,3"/>
+                            </Style>
+                        </StackPanel.Resources>
+                        <Button cal:Message.Attach="FilterActive" ToolTip="진행 중만 보기">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="12" Height="12" Margin="0,0,5,0">
+                                    <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoDownload}"
+                                          Stroke="{DynamicResource WfAccentBrush}"/>
+                                </Viewbox>
+                                <TextBlock Text="{Binding DownloadingCount}" FontWeight="SemiBold"/>
+                                <TextBlock Text=" 진행"/>
+                            </StackPanel>
+                        </Button>
+                        <Button cal:Message.Attach="FilterWaiting" ToolTip="대기만 보기">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="12" Height="12" Margin="0,0,5,0">
+                                    <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoClock}"/>
+                                </Viewbox>
+                                <TextBlock Text="{Binding WaitingCount}" FontWeight="SemiBold"/>
+                                <TextBlock Text=" 대기"/>
+                            </StackPanel>
+                        </Button>
+                        <Button cal:Message.Attach="FilterDone" ToolTip="완료만 보기">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="12" Height="12" Margin="0,0,5,0">
+                                    <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoCheck}"
+                                          Stroke="{DynamicResource WfOkBrush}"/>
+                                </Viewbox>
+                                <TextBlock Text="{Binding CompletedCount}" FontWeight="SemiBold"/>
+                                <TextBlock Text=" 완료"/>
+                            </StackPanel>
+                        </Button>
+                        <Button cal:Message.Attach="FilterFailed" ToolTip="실패만 보기">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="12" Height="12" Margin="0,0,5,0">
+                                    <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoAlert}"
+                                          Stroke="{DynamicResource WfErrBrush}"/>
+                                </Viewbox>
+                                <TextBlock Text="{Binding FailedCount}" FontWeight="SemiBold"/>
+                                <TextBlock Text=" 실패"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- 실시간 로그 드로어(FR-U3.3) — 본문 위 우측 오버레이, 레벨 필터 + 복사 -->
+            <Border Grid.Row="2" HorizontalAlignment="Right" Width="360"
+                    Background="{DynamicResource WfSurfaceBrush}"
+                    BorderBrush="{DynamicResource WfLine2Brush}" BorderThickness="1,0,0,0"
+                    Visibility="{Binding ShowLog, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="12,8">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}"
+                                    cal:Message.Attach="ToggleLog" ToolTip="닫기">
+                                <Viewbox Width="13" Height="13">
+                                    <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoX}"/>
+                                </Viewbox>
+                            </Button>
+                            <Button DockPanel.Dock="Right" x:Name="ClearLog" Style="{StaticResource IconButton}"
+                                    ToolTip="로그 지우기">
+                                <Viewbox Width="13" Height="13">
+                                    <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoTrash}"/>
+                                </Viewbox>
+                            </Button>
+                            <Button DockPanel.Dock="Right" x:Name="CopyLog" Style="{StaticResource IconButton}"
+                                    ToolTip="표시 중인 로그 복사">
+                                <Viewbox Width="13" Height="13">
+                                    <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoClipboard}"/>
+                                </Viewbox>
+                            </Button>
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="14" Height="14" Margin="0,0,7,0" VerticalAlignment="Center">
+                                    <Path Style="{StaticResource WfIcon}" Data="{StaticResource IcoTerminal}"
+                                          Stroke="{DynamicResource WfAccentBrush}"/>
+                                </Viewbox>
+                                <TextBlock Text="실시간 로그" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="10,6">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="LogFilterAll" Style="{StaticResource ChipButton}" Padding="10,3"
+                                    Content="전체" Tag="{Binding LogFilterAllTag}"/>
+                            <Button x:Name="LogFilterWarn" Style="{StaticResource ChipButton}" Padding="10,3"
+                                    Content="경고+" Tag="{Binding LogFilterWarnTag}"/>
+                            <Button x:Name="LogFilterError" Style="{StaticResource ChipButton}" Padding="10,3"
+                                    Content="오류" Tag="{Binding LogFilterErrorTag}"/>
+                        </StackPanel>
+                    </Border>
+                    <ListBox x:Name="LogLines" FontFamily="Consolas" FontSize="10.5" BorderThickness="0"
+                             Background="{DynamicResource WfBgBrush}"
+                             HorizontalContentAlignment="Stretch"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

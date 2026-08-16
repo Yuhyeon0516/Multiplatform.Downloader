@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "샤샤룽 다운로더",
+  "version": "2.0.0",
+  "description": "영상 페이지에서 우클릭 또는 아이콘 클릭으로 샤샤룽 다운로더 앱으로 보냅니다 (YouTube/Instagram/TikTok/샤오홍슈/스레드/페이스북/X/도우인/레딧/핀터레스트).",
+  "permissions": ["contextMenus", "scripting", "tabs"],
+  "host_permissions": ["https://*.tiktok.com/*", "https://*.facebook.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "현재 페이지를 샤샤룽 다운로더로 보내기",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

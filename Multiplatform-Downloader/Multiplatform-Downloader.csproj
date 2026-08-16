@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Multiplatform_Downloader</RootNamespace>
+    <Version>2.12.4</Version>
+    <!-- 토스트 알림·파일 속성에 표시되는 이름 — 미설정 시 어셈블리명 'Multiplatform-Downloader'가 노출됨 -->
+    <AssemblyTitle>샤샤룽 다운로더</AssemblyTitle>
+    <Product>샤샤룽 다운로더</Product>
+    <Company>샤샤룽컴퍼니</Company>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
+  <!-- 번들 엔진(yt-dlp/ffmpeg/ffprobe/deno) — 빌드·publish 출력의 tools\ 로 복사 -->
+  <ItemGroup>
+    <None Include="tools\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>tools\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Autofac" Version="8.0.0" />
+    <PackageReference Include="Caliburn.Micro" Version="4.0.212" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Multiplatform-Downloader.Core\Multiplatform-Downloader.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Multiplatform-Downloader.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,80 @@
+<Window x:Class="Multiplatform_Downloader.Views.SettingsView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        mc:Ignorable="d"
+        Background="{DynamicResource WfSurfaceBrush}"
+        TextElement.Foreground="{DynamicResource WfInkBrush}"
+        FontFamily="Segoe UI"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        Title="설정" Height="560" Width="520" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <Style TargetType="TextBlock" x:Key="Label">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="Section">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Opacity" Value="0.7"/>
+            <Setter Property="Margin" Value="0,14,0,8"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="18">
+        <!-- 하단 버튼 -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="Cancel" Content="취소" Width="90" Margin="0,0,8,0"/>
+            <Button x:Name="Save" Content="저장" Width="90"/>
+        </StackPanel>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="일반" Style="{StaticResource Section}" Margin="0,0,0,8"/>
+
+                <TextBlock Text="다운로드 폴더" Style="{StaticResource Label}"/>
+                <DockPanel Margin="0,0,0,10">
+                    <Button DockPanel.Dock="Right" x:Name="BrowseFolder" Content="찾아보기…" Width="90" Margin="8,0,0,0"/>
+                    <TextBox Text="{Binding DownloadFolder}" Padding="6,4" VerticalContentAlignment="Center"/>
+                </DockPanel>
+
+                <TextBlock Text="동시 다운로드 수 (권장 3~5)" Style="{StaticResource Label}"/>
+                <ComboBox ItemsSource="{Binding ConcurrentOptions}" SelectedItem="{Binding MaxConcurrent}" Width="90" HorizontalAlignment="Left" Margin="0,0,0,10"/>
+
+                <TextBlock Text="큐 최대 보유" Style="{StaticResource Label}"/>
+                <TextBox Text="{Binding MaxQueueItems}" Width="90" HorizontalAlignment="Left" Padding="6,4" Margin="0,0,0,10"/>
+
+                <TextBlock Text="기본 품질" Style="{StaticResource Label}"/>
+                <ComboBox ItemsSource="{Binding QualityOptions}" SelectedItem="{Binding DefaultQuality}" Width="160" HorizontalAlignment="Left" Margin="0,0,0,10"/>
+
+                <TextBlock Text="등록 실패 재시도 횟수 (네트워크 오류 시 · 썸네일 포함)" Style="{StaticResource Label}"/>
+                <ComboBox ItemsSource="{Binding RetryOptions}" SelectedItem="{Binding AnalysisRetryCount}" Width="90" HorizontalAlignment="Left"/>
+
+                <TextBlock Text="Windows 연동" Style="{StaticResource Section}"/>
+                <CheckBox Content="Windows 시작 시 자동 실행" IsChecked="{Binding LaunchOnStartup}" Margin="0,4"/>
+                <CheckBox Content="트레이로 최소화된 상태로 시작" IsChecked="{Binding StartMinimized}" Margin="0,4"/>
+                <CheckBox Content="창 닫기 시 트레이로 최소화 (아니면 완전 종료)" IsChecked="{Binding CloseToTray}" Margin="0,4"/>
+                <CheckBox Content="완료/실패 알림 (토스트)" IsChecked="{Binding NotifyOnComplete}" Margin="0,4"/>
+                <CheckBox Content="자동 다운로드 (등록하면 분석 후 바로 받기)" IsChecked="{Binding AutoStartDownload}" Margin="0,4"/>
+
+                <TextBlock Text="고급" Style="{StaticResource Section}"/>
+                <TextBlock Text="로그인 쿠키 (Instagram/샤오홍슈 로그인 콘텐츠용)" Style="{StaticResource Label}"/>
+                <ComboBox ItemsSource="{Binding CookieOptions}" SelectedItem="{Binding CookieSource}" Width="220" HorizontalAlignment="Left"/>
+                <DockPanel Margin="0,8,0,0" Visibility="{Binding IsCookieFile, Converter={StaticResource BoolToVis}}">
+                    <Button DockPanel.Dock="Right" x:Name="BrowseCookieFile" Content="찾아보기…" Width="90" Margin="8,0,0,0"/>
+                    <TextBox Text="{Binding CookieFilePath}" Padding="6,4" VerticalContentAlignment="Center"/>
+                </DockPanel>
+                <TextBlock Text="{Binding CookieHint}" TextWrapping="Wrap" FontSize="11.5" Opacity="0.9" Margin="0,8,0,0"
+                           Foreground="{DynamicResource WfWarnBrush}"
+                           Visibility="{Binding IsBrowserCookie, Converter={StaticResource BoolToVis}}"/>
+
+                <TextBlock Text="테마" Style="{StaticResource Label}" Margin="0,12,0,4"/>
+                <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding Theme}" Width="160" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

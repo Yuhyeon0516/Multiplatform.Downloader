@@ -1,0 +1,41 @@
+<!-- 와이어프레임 다크 팔레트 (docs/design/multiplatform-downloader-wireframe.html prefers-color-scheme: dark) -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="WfBgBrush" Color="#16181D"/>
+    <SolidColorBrush x:Key="WfSurfaceBrush" Color="#1F232B"/>
+    <SolidColorBrush x:Key="WfInkBrush" Color="#E8EAEE"/>
+    <SolidColorBrush x:Key="WfInk2Brush" Color="#9AA3B2"/>
+    <SolidColorBrush x:Key="WfLineBrush" Color="#343A46"/>
+    <SolidColorBrush x:Key="WfAccentBrush" Color="#60A5FA"/>
+    <SolidColorBrush x:Key="WfAccentSoftBrush" Color="#1E3A5F"/>
+
+    <!-- 파생 토큰: 컨트롤 상태 -->
+    <SolidColorBrush x:Key="WfChipBrush" Color="#262C36"/>
+    <SolidColorBrush x:Key="WfHoverBrush" Color="#2A313C"/>
+    <SolidColorBrush x:Key="WfPressedBrush" Color="#333B48"/>
+
+    <!-- 주요 버튼(.btn.pri) — 흰 글씨 대비 확보를 위해 두 테마 동일 -->
+    <SolidColorBrush x:Key="WfPrimaryBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="WfPrimaryHoverBrush" Color="#3B82F6"/>
+    <SolidColorBrush x:Key="WfPrimaryPressedBrush" Color="#1D4ED8"/>
+
+    <!-- 위험 액션(고스트) -->
+    <SolidColorBrush x:Key="WfDangerFgBrush" Color="#F87171"/>
+    <SolidColorBrush x:Key="WfDangerBorderBrush" Color="#66DC2626"/>
+    <SolidColorBrush x:Key="WfDangerHoverBrush" Color="#26DC2626"/>
+    <SolidColorBrush x:Key="WfDangerPressedBrush" Color="#40DC2626"/>
+
+    <!-- 상태 (ok/warn/err) -->
+    <SolidColorBrush x:Key="WfOkBrush" Color="#16A34A"/>
+    <SolidColorBrush x:Key="WfWarnBrush" Color="#E0A030"/>
+    <SolidColorBrush x:Key="WfErrBrush" Color="#DC2626"/>
+
+    <!-- 리디자인 신규 토큰(FR-U1.1) — 기존 키 불변, 추가만. 브랜드는 현행 블루 유지(V-04) -->
+    <SolidColorBrush x:Key="WfSurface2Brush" Color="#262C36"/>
+    <SolidColorBrush x:Key="WfLine2Brush" Color="#454D5C"/>
+    <SolidColorBrush x:Key="WfOkSoftBrush" Color="#12301F"/>
+    <SolidColorBrush x:Key="WfWarnSoftBrush" Color="#3A2E14"/>
+    <SolidColorBrush x:Key="WfErrSoftBrush" Color="#3A1B1B"/>
+    <SolidColorBrush x:Key="WfFocusBrush" Color="#60A5FA"/>
+</ResourceDictionary>
