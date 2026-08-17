@@ -1,8 +1,8 @@
-; ShashalungDownloader.iss — 샤샤룽 다운로더 설치 스크립트
+; ShyshyroongDownloader.iss — 샤샤룽 다운로더 설치 스크립트
 ; Inno Setup 6.3+ (PNG 위저드 이미지 사용)
 
 #define MyAppName "샤샤룽 다운로더"
-#define MyAppNameEn "Shashalung Downloader"
+#define MyAppNameEn "Shyshyroong Downloader"
 #define MyAppExeName "Multiplatform-Downloader.exe"
 #define MyAppExePath "publish\" + MyAppExeName
 
@@ -10,7 +10,7 @@
   #define MyAppVersion GetVersionNumbersString(MyAppExePath)
 #endif
 
-#define MyAppPublisher "샤샤룽컴퍼니 (Shashalung Company)"
+#define MyAppPublisher "샤샤룽컴퍼니 (Shyshyroong Company)"
 #define MyAppScheme "mpdl"
 
 [Setup]
@@ -20,13 +20,13 @@ AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 VersionInfoDescription={#MyAppNameEn} Setup
-DefaultDirName={autopf}\Shashalung Downloader
+DefaultDirName={autopf}\Shyshyroong Downloader
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=Output
-OutputBaseFilename=ShashalungDownloader_Setup_v{#MyAppVersion}
+OutputBaseFilename=ShyshyroongDownloader_Setup_v{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible
@@ -79,8 +79,10 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
     Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
+; runascurrentuser: 설치 직후 첫 실행이 관리자 토큰으로 돌면 UIPI가 일반 권한 앱(캡컷·탐색기)으로의
+; 파일 드래그를 조용히 차단한다(FR-DG5) — 반드시 현재 사용자 권한으로 실행
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; \
-    Flags: nowait postinstall skipifsilent
+    Flags: nowait postinstall skipifsilent runascurrentuser
 
 [UninstallDelete]
 ; 번들 엔진·확장 등 런타임 잔여물 정리 (사용자 다운로드/설정은 보존)

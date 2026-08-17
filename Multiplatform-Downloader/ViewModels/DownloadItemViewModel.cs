@@ -138,6 +138,14 @@ internal sealed class DownloadItemViewModel : PropertyChangedBase
 
     public void PlayItem() => PlayRequested?.Invoke(this);
 
+    /// <summary>외부 앱 드래그 아웃 가능(FR-DG3) — 경로 있는 완료 항목만. 파일 실재는 시작 직전 재검증.</summary>
+    public bool CanDragItem { get; private set; }
+
+    /// <summary>드래그 페이로드용 실제 파일 경로(FR-DG3) — 기록 경로가 실파일과 다르면
+    /// [id] 토큰 재해석(인앱 재생과 동일 경로), 못 찾으면 null.</summary>
+    internal string? GetDraggablePath() =>
+        _outputPath is null ? null : ShellViewModel.ResolveMediaPath(_outputPath);
+
     // ── 주요 액션(FR-U3.1) — 카드에는 이 버튼 1개 + 오버플로만 노출한다 ──
 
     /// <summary>accent(받기/재개/재시도/로그인) · neutral(일시정지/폴더) · danger(취소/삭제) · none(Merging).</summary>
@@ -230,6 +238,7 @@ internal sealed class DownloadItemViewModel : PropertyChangedBase
             && item.LastErrorCategory == ErrorCategory.LoginRequired;
         CanOpenFolderItem = item.Status == DownloadStatus.Completed && !string.IsNullOrEmpty(item.OutputFilePath);
         CanPlayItem = CanOpenFolderItem; // 인앱 재생(§9) — 경로 있는 완료 항목만
+        CanDragItem = CanOpenFolderItem; // 외부 앱 드래그 아웃(FR-DG3) — 동일 조건
 
         // 주요 액션 1개 도출(FR-U3.1) — 우선순위 체인은 시뮬 CA 116건이 검증한 매핑과 동일해야 한다
         (PrimaryActionKind, PrimaryActionLabel) = ComputePrimary();

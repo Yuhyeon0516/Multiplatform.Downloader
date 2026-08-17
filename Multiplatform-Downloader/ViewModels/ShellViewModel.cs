@@ -447,6 +447,26 @@ internal sealed class ShellViewModel : Screen
         }
     }
 
+    /// <summary>외부 앱 드래그 아웃 페이로드 수집(FR-DG2·DG3, 탐색기 관례):
+    /// 시작 카드가 체크돼 있으면 체크된 드래그 가능 항목 전체, 아니면 그 카드 1개.
+    /// 실존 파일만 담고([id] 재해석 포함), 0건이면 빈 목록 + 경고 로그(드래그 미시작).</summary>
+    internal IReadOnlyList<string> CollectDragPaths(DownloadItemViewModel origin)
+    {
+        var cards = origin.IsChecked
+            ? Items.Where(i => i.IsChecked && i.CanDragItem)
+            : [origin];
+        var paths = cards
+            .Select(c => c.GetDraggablePath())
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+        if (paths.Count == 0)
+            _logger.Warning("UI", "드래그할 파일을 찾지 못했습니다(삭제/이동 여부 확인)");
+        else
+            _logger.Info("UI", $"드래그 아웃 시작: {paths.Count}개 파일");
+        return paths;
+    }
+
     /// <summary>저장된 출력 경로가 실제 파일과 다르면(과거 CP949 stdout 훼손 등)
     /// 파일명 끝의 "[id]" 토큰으로 같은 폴더에서 실제 파일을 찾는다.</summary>
     internal static string? ResolveMediaPath(string path)

@@ -15,7 +15,7 @@ internal sealed class AboutViewModel : Screen
     }
 
     public string ProductName { get; } = "샤샤룽 다운로더";
-    public string ProductNameEn { get; } = "Shashalung Downloader";
+    public string ProductNameEn { get; } = "Shyshyroong Downloader";
     public string Version { get; }
     public string SubTitle { get; } = "YouTube · Instagram · TikTok · 샤오홍슈 영상 다운로더";
     public string Developer { get; } = "라이프백패커 (Lifebackpacker)";

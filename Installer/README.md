@@ -15,20 +15,20 @@ build.bat            :: csproj <Version> 사용
 build.bat 2.9.0      :: 버전 오버라이드
 ```
 
-산출물: `Installer/Output/ShashalungDownloader_Setup_v2.8.5.0.exe`
+산출물: `Installer/Output/ShyshyroongDownloader_Setup_v2.8.5.0.exe`
 
 ## 수동 빌드 (배치가 안 될 때)
 ```powershell
 $proj = "..\Multiplatform-Downloader\Multiplatform-Downloader.csproj"
 dotnet publish $proj -c Release -r win-x64 --self-contained true -p:DebugType=None -o publish
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" ShashalungDownloader.iss
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" ShyshyroongDownloader.iss
 ```
 > ISCC는 `.iss` 파일 위치(Installer/)를 기준으로 `publish\`, `Assets\`, `Output\` 상대경로를 해석한다.
 
 ## 구조
 ```
 Installer/
-├── ShashalungDownloader.iss   # 메인 스크립트 ([Setup][Files][Icons][Registry])
+├── ShyshyroongDownloader.iss   # 메인 스크립트 ([Setup][Files][Icons][Registry])
 ├── build.bat                  # publish → ISCC 원클릭
 ├── Assets/
 │   ├── app.ico                # 설치기 + 바로가기 아이콘
@@ -39,7 +39,7 @@ Installer/
 ```
 
 ## 설치기가 하는 일
-- `{autopf}\Shashalung Downloader`에 앱 + tools + .NET 런타임 설치
+- `{autopf}\Shyshyroong Downloader`에 앱 + tools + .NET 런타임 설치
 - 시작 메뉴 · (선택) 바탕화면 바로가기 생성
 - `mpdl://` URL 프로토콜을 HKCR에 등록 (앱도 실행 시 HKCU에 self-heal 등록)
 - 제거 시 tools/ 및 설치 파일 정리 (사용자 다운로드·설정은 보존)

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -31,7 +32,8 @@ public partial class ShellView : Window
         e.Handled = true;
     }
 
-    /// <summary>완료 카드 더블클릭 = 재생(§9). 재생 불가 상태면 무시.</summary>
+    /// <summary>완료 카드 더블클릭 = 재생(§9). 단일 클릭은 드래그 아웃 시작점 기록(FR-DG1) —
+    /// 버튼·체크박스·콤보 클릭은 해당 컨트롤이 Handled 처리해 여기 오지 않는다(FR-DG4).</summary>
     private void OnCardMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2
@@ -39,6 +41,55 @@ public partial class ShellView : Window
         {
             card.PlayItem();
             e.Handled = true;
+            return;
+        }
+        if (sender is FrameworkElement { DataContext: DownloadItemViewModel { CanDragItem: true } } source)
+        {
+            _dragStart = e.GetPosition(null);
+            _dragSourceCard = source;
+        }
+    }
+
+    private System.Windows.Point _dragStart;
+    private FrameworkElement? _dragSourceCard;
+    private bool _isDragging;
+
+    /// <summary>임계값(시스템 설정) 초과 시 완료 파일을 외부 앱으로 드래그(FR-DG1~DG3).
+    /// DoDragDrop은 블로킹(모달 루프) — UI 스레드 동기 호출이 WPF 표준.</summary>
+    private void OnCardMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_isDragging || _dragSourceCard is null || !ReferenceEquals(sender, _dragSourceCard)
+            || e.LeftButton != System.Windows.Input.MouseButtonState.Pressed)
+            return;
+
+        var pos = e.GetPosition(null);
+        if (System.Math.Abs(pos.X - _dragStart.X) <= SystemParameters.MinimumHorizontalDragDistance
+            && System.Math.Abs(pos.Y - _dragStart.Y) <= SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        if (DataContext is not ShellViewModel shell
+            || _dragSourceCard.DataContext is not DownloadItemViewModel { CanDragItem: true } card)
+            return;
+
+        var paths = shell.CollectDragPaths(card);
+        if (paths.Count == 0)
+        {
+            _dragSourceCard = null; // 실파일 없음 — 이 제스처에서는 재시도하지 않는다
+            return;
+        }
+
+        _isDragging = true;
+        try
+        {
+            // FileDrop 단독(텍스트 포맷 미포함 — 자기 창 URL 드롭존 재등록 차단, FR-DG1)
+            // Copy 단독(Move 허용 시 같은 볼륨 드롭에서 원본이 이동·소실될 위험)
+            var data = new DataObject(DataFormats.FileDrop, paths.ToArray());
+            DragDrop.DoDragDrop(_dragSourceCard, data, DragDropEffects.Copy);
+        }
+        finally
+        {
+            _isDragging = false;
+            _dragSourceCard = null;
         }
     }
 

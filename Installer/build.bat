@@ -25,7 +25,7 @@ if %ERRORLEVEL% neq 0 ( echo [ERROR] publish 실패 & exit /b 1 )
 
 :: [2/2] Inno Setup 컴파일 (publish 이후여야 버전 자동 추출 가능)
 echo [2/2] Inno Setup 컴파일...
-if "%VERSION%"=="" ( %ISCC% ShashalungDownloader.iss ) else ( %ISCC% /DMyAppVersion="%VERSION%" ShashalungDownloader.iss )
+if "%VERSION%"=="" ( %ISCC% ShyshyroongDownloader.iss ) else ( %ISCC% /DMyAppVersion="%VERSION%" ShyshyroongDownloader.iss )
 if %ERRORLEVEL% neq 0 ( echo [ERROR] 컴파일 실패 & exit /b 1 )
 
 echo.
