@@ -195,8 +195,8 @@ var
 begin
   Id := AddFeaturePage(wpWelcome,
     '샤샤룽 다운로더 소개',
-    'YouTube · Instagram · TikTok · 샤오홍슈 영상을 한 곳에서.', 'features-1.bmp');
+    'YouTube · TikTok · Instagram 등 10개 플랫폼 영상을 한 곳에서.', 'features-1.bmp');
   AddFeaturePage(Id,
     '주요 기능',
-    '붙여넣고, 골라 받고, 알아서 정리까지.', 'features-2.bmp');
+    '붙여넣고, 골라 받고, 바로 재생까지.', 'features-2.bmp');
 end;
