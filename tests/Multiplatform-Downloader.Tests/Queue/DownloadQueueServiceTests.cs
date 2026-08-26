@@ -505,6 +505,115 @@ public class DownloadQueueServiceTests
         Assert.Equal("137", item.SelectedFormatId);
     }
 
+    // ── 슬롯 대기 중 취소(H6) 회귀 ─────────────────────────
+
+    [Fact]
+    public async Task should_cancel_item_when_canceled_while_waiting_for_analysis_slot()
+    {
+        // H6: 분석 동시성 한도가 차서 슬롯을 기다리는 항목을 취소하면 Queued 고착 없이 Canceled여야 한다.
+        // (수정 전에는 WaitAsync의 OCE가 catch/finally를 우회해 항목이 Queued로 영구 고착 + CTS 누수)
+        var metadata = new BlockingMetadata();
+        using var sut = CreateSut(metadata: metadata, settings: SettingsWithConcurrency(1));
+
+        sut.Enqueue("https://youtu.be/busy");                         // 분석 슬롯 점유
+        await WaitForAsync(() => metadata.CurrentConcurrent == 1);
+        var waiting = sut.Enqueue("https://youtu.be/wait2").Added[0]; // 슬롯 대기 진입
+        Assert.Equal(DownloadStatus.Queued, waiting.Status);
+
+        sut.Cancel(waiting.Id);
+
+        await WaitForAsync(() => waiting.Status == DownloadStatus.Canceled);
+        metadata.ReleaseAll(); // 정리
+    }
+
+    [Fact]
+    public async Task should_cancel_ready_item_when_canceled_while_waiting_for_download_slot()
+    {
+        // H6: 다운로드 슬롯 대기 중(Ready 유지) 취소 — 정리 경로를 타고 Canceled로 전이돼야 한다.
+        var engine = new BlockingEngine();
+        using var sut = CreateSut(engine: engine, settings: SettingsWithConcurrency(1));
+
+        var busy = await EnqueueAndStartAsync(sut, "https://youtu.be/busy");
+        await WaitForAsync(() => busy.Status == DownloadStatus.Downloading); // 다운로드 슬롯 점유
+
+        var waiting = await EnqueueAndStartAsync(sut, "https://youtu.be/wait2"); // Start 후 슬롯 대기
+        sut.Cancel(waiting.Id);
+
+        await WaitForAsync(() => waiting.Status == DownloadStatus.Canceled);
+        engine.ReleaseAll(); // 정리
+    }
+
+    [Fact]
+    public async Task should_retry_when_canceled_while_waiting_for_analysis_slot()
+    {
+        // H6 후속: 대기 중 취소된 항목은 CTS가 정리되어 재시도(재분석)가 정상 동작해야 한다.
+        var metadata = new BlockingMetadata();
+        using var sut = CreateSut(metadata: metadata, settings: SettingsWithConcurrency(1));
+
+        sut.Enqueue("https://youtu.be/busy");
+        await WaitForAsync(() => metadata.CurrentConcurrent == 1);
+        var waiting = sut.Enqueue("https://youtu.be/wait2").Added[0];
+        sut.Cancel(waiting.Id);
+        await WaitForAsync(() => waiting.Status == DownloadStatus.Canceled);
+
+        metadata.ReleaseAll(); // 슬롯 해제 — 이후 분석은 즉시 완료
+        sut.Retry(waiting.Id);
+
+        await WaitForAsync(() => waiting.Status == DownloadStatus.Ready);
+    }
+
+    [Fact]
+    public async Task should_cleanup_partials_when_canceled_while_waiting_for_resume_slot()
+    {
+        // H6-1: Paused(.part 보존) → Resume → 슬롯 대기 중 취소 — 이전 시도의 조각 파일이 정리돼야 한다.
+        var folder = Directory.CreateTempSubdirectory("mpdl-h6-").FullName;
+        try
+        {
+            var settings = SettingsWithConcurrency(1);
+            settings.Current.DownloadFolder = folder;
+            var engine = new BlockingEngine();
+            using var sut = CreateSut(metadata: new IdMetadata("vid2"), engine: engine, settings: settings);
+
+            var victim = await EnqueueAndStartAsync(sut, "https://youtu.be/victim");
+            await WaitForAsync(() => victim.Status == DownloadStatus.Downloading);
+            sut.Pause(victim.Id);
+            await WaitForAsync(() => victim.Status == DownloadStatus.Paused); // 슬롯 해제, .part 보존
+            var partial = Path.Combine(folder, "테스트 [vid2].f137.mp4.part");
+            File.WriteAllText(partial, "partial");
+
+            var busy = await EnqueueAndStartAsync(sut, "https://youtu.be/busy");
+            await WaitForAsync(() => busy.Status == DownloadStatus.Downloading); // 슬롯 점유
+
+            sut.Resume(victim.Id); // 슬롯 대기 진입(Paused 유지)
+            sut.Cancel(victim.Id);
+
+            await WaitForAsync(() => victim.Status == DownloadStatus.Canceled);
+            await WaitForAsync(() => !File.Exists(partial)); // 조각 파일 정리(H6-1) 확인
+            engine.ReleaseAll(); // 정리
+        }
+        finally
+        {
+            try { Directory.Delete(folder, recursive: true); } catch { /* best-effort */ }
+        }
+    }
+
+    [Fact]
+    public async Task should_cancel_waiting_items_when_disposed()
+    {
+        // H6-4: 슬롯 대기 항목이 있는 채로 Dispose — 취소 연속이 _itemCts를 변형해도(스냅샷 순회) 예외 없이
+        // 전 항목이 취소로 정리돼야 한다.
+        var metadata = new BlockingMetadata();
+        var sut = CreateSut(metadata: metadata, settings: SettingsWithConcurrency(1));
+
+        var items = sut.Enqueue("https://youtu.be/a\nhttps://youtu.be/b\nhttps://youtu.be/c").Added;
+        await WaitForAsync(() => metadata.CurrentConcurrent == 1); // 1개 진행, 2개 슬롯 대기
+
+        sut.Dispose();
+
+        await WaitForAsync(() => items.All(i => i.Status == DownloadStatus.Canceled));
+        metadata.ReleaseAll(); // 정리
+    }
+
     // ── Fakes ─────────────────────────────────────────────
 
     private static FakeSettings SettingsWithConcurrency(int max)
@@ -639,6 +748,46 @@ public class DownloadQueueServiceTests
     {
         public Task<DownloadResult> DownloadAsync(DownloadRequest request, IProgress<DownloadProgress>? progress = null, CancellationToken cancellationToken = default)
             => Task.FromResult(new DownloadResult(Success: true, OutputFilePath: null, ExitCode: 0));
+    }
+
+    /// <summary>SourceId(조각 파일 매칭용 id)를 포함하는 메타데이터 페이크(H6-1 Resume 정리 테스트).</summary>
+    private sealed class IdMetadata(string id) : IMediaMetadataService
+    {
+        public Task<MediaInfo> FetchAsync(string url, CancellationToken cancellationToken = default)
+            => Task.FromResult(new MediaInfo
+            {
+                Id = id,
+                Title = "테스트",
+                Formats = [new MediaFormat { FormatId = "137", Height = 1080, VideoCodec = "avc1", IsVideoOnly = true }],
+            });
+    }
+
+    /// <summary>취소 가능하게 블로킹되는 메타데이터 페이크 — 분석 슬롯 점유용(H6 회귀 테스트).</summary>
+    private sealed class BlockingMetadata : IMediaMetadataService
+    {
+        private readonly SemaphoreSlim _release = new(0);
+        private int _current;
+
+        public int CurrentConcurrent => Volatile.Read(ref _current);
+        public void ReleaseAll() => _release.Release(1000);
+
+        public async Task<MediaInfo> FetchAsync(string url, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _current);
+            try
+            {
+                await _release.WaitAsync(cancellationToken).ConfigureAwait(false);
+                return new MediaInfo
+                {
+                    Title = "테스트",
+                    Formats = [new MediaFormat { FormatId = "137", Height = 1080, VideoCodec = "avc1", IsVideoOnly = true }],
+                };
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _current);
+            }
+        }
     }
 
     private sealed class BlockingEngine : IDownloadEngine

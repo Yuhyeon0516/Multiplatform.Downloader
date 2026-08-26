@@ -321,7 +321,17 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
     /// </summary>
     private async Task AnalyzeStageAsync(DownloadItem item, CancellationToken cancellationToken)
     {
-        await _analysisLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _analysisLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // 슬롯 대기 중 취소(H6) — try 밖에서 OCE가 새면 아래 catch/finally를 모두 우회해
+            // 항목이 Queued로 영구 고착되고 CTS가 누수된다. 세마포어는 미획득이므로 Release 없이 정리만 한다.
+            HandleSlotWaitCancellation(item, cancellationToken, "분석");
+            return;
+        }
         var shouldAutoStart = false; // 자동 다운로드는 이 태스크의 CTS 정리(finally) 이후에 시작한다
         try
         {
@@ -389,7 +399,7 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
         finally
         {
             _analysisLimiter.Release();
-            CleanupItemTask(item); // 분석 CTS 제거 — 이후 Start()가 새 CTS를 안전히 등록
+            CleanupItemTask(item, cancellationToken); // 분석 CTS 제거(소유 검증) — 이후 Start()가 새 CTS를 안전히 등록
         }
 
         // CTS 정리 후 자동 시작 — 분석 CTS 정리와의 경합 없음(FR-N3.2)
@@ -400,7 +410,16 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
     /// <summary>다운로드 단계: <c>Ready</c>/<c>Paused</c>에서 시작하여 엔진으로 다운로드한다.</summary>
     private async Task DownloadStageAsync(DownloadItem item, bool resume, CancellationToken cancellationToken)
     {
-        await _limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _limiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // 슬롯 대기 중 취소/일시정지(H6) — 세마포어 미획득이므로 Release 없이 정리만 한다.
+            HandleSlotWaitCancellation(item, cancellationToken, "다운로드");
+            return;
+        }
         try
         {
             if (!SafeTransition(item, item.Start))
@@ -472,7 +491,7 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
         finally
         {
             _limiter.Release();
-            CleanupItemTask(item);
+            CleanupItemTask(item, cancellationToken);
             CleanupPartialDownloads(item); // 실패·취소 시 남은 조각 파일 제거(일시정지·완료는 보존)
         }
     }
@@ -530,12 +549,25 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
         catch { /* best-effort */ }
     }
 
-    /// <summary>항목의 CTS를 정리한다. 재개 대기(Paused)가 아니면 일시정지 요청 플래그도 정리(M7).</summary>
-    private void CleanupItemTask(DownloadItem item)
+    /// <summary>슬롯 대기 중 취소 공통 정리(H6) — 세마포어 미획득 상태이므로 Release 없이
+    /// 상태 전이·CTS·조각 파일만 정리한다. 조각 정리는 Canceled 확정 시에만 동작(상태 게이트)하므로
+    /// 일시정지 유지 시 재개용 .part는 보존된다.</summary>
+    private void HandleSlotWaitCancellation(DownloadItem item, CancellationToken cancellationToken, string stageLabel)
+    {
+        HandleCancellation(item);
+        CleanupItemTask(item, cancellationToken);
+        CleanupPartialDownloads(item); // Resume 대기 취소 시 이전 시도의 .part 잔여 정리(H6-1)
+        _logger.Info("Queue", $"[{Tag(item)}] {stageLabel} 대기 중 취소됨 (상태 {item.Status})");
+    }
+
+    /// <summary>항목의 CTS를 정리한다. 재개 대기(Paused)가 아니면 일시정지 요청 플래그도 정리(M7).
+    /// owner 토큰을 주면 그 토큰을 발급한 CTS일 때만 제거한다 — 취소 직후 Retry가 등록한
+    /// 새 CTS를 지연 실행된 이전 태스크가 잘못 Dispose하는 경합 방지(H6-2).</summary>
+    private void CleanupItemTask(DownloadItem item, CancellationToken? owner = null)
     {
         lock (_gate)
         {
-            if (_itemCts.TryGetValue(item.Id, out var cts))
+            if (_itemCts.TryGetValue(item.Id, out var cts) && (owner is null || cts.Token == owner.Value))
             {
                 cts.Dispose();
                 _itemCts.Remove(item.Id);
@@ -607,6 +639,11 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
         {
             if (isPause && item.Status == DownloadStatus.Downloading)
                 SafeTransition(item, item.Pause);
+            else if (isPause && item.Status == DownloadStatus.Paused)
+            {
+                // 재개 슬롯 대기(Paused) 중 일시정지 요청 — 이미 일시정지 상태이므로 유지(.part 보존, H6-3).
+                // Cancel로 넘기면 사용자가 '일시정지'를 눌렀는데 항목이 취소되고 재개 진행분이 삭제된다.
+            }
             else if (item.Status is not (DownloadStatus.Canceled or DownloadStatus.Completed or DownloadStatus.Failed))
                 SafeTransition(item, item.Cancel);
         }
@@ -695,7 +732,9 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
         Task[] pending;
         lock (_gate)
         {
-            foreach (var cts in _itemCts.Values)
+            // 스냅샷 순회(H6-4): Cancel()이 슬롯 대기 태스크의 취소 연속을 이 스레드에서 인라인 실행하면
+            // CleanupItemTask가 _itemCts를 변형해 순회 중 InvalidOperationException이 날 수 있다.
+            foreach (var cts in _itemCts.Values.ToArray())
             {
                 try { cts.Cancel(); } catch { /* ignore */ }
             }
@@ -707,7 +746,7 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
 
         lock (_gate)
         {
-            foreach (var cts in _itemCts.Values)
+            foreach (var cts in _itemCts.Values.ToArray())
             {
                 try { cts.Dispose(); } catch { /* ignore */ }
             }
