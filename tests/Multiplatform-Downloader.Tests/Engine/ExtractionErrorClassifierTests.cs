@@ -104,6 +104,26 @@ public class ExtractionErrorClassifierTests
         Assert.Contains("게시물", f.UserMessage);
     }
 
+    [Fact] // 실측 2026-08-30: TikTok JS 챌린지 간헐 실패 → 재시도 대상으로 분류
+    public void should_classify_tiktok_rehydration_as_transient_and_retryable()
+    {
+        const string rehydration =
+            "ERROR: [TikTok] 7679101730352565535: Unable to extract universal data for rehydration; please report this issue on  https://github.com/yt-dlp/yt-dlp/issues?q= , filling out the appropriate issue template. Confirm you are on the latest version using  yt-dlp -U";
+        var f = ExtractionErrorClassifier.Classify(rehydration);
+        Assert.Equal(ExtractionFailureKind.TransientExtraction, f.Kind);
+        Assert.True(f.IsRetryable); // 핵심 — 확정 실패가 아니라 자동 재시도
+    }
+
+    [Fact] // 실측 2026-08-30: 같은 챌린지 계열의 또 다른 시그니처
+    public void should_classify_tiktok_unexpected_response_as_transient()
+    {
+        const string unexpected =
+            "ERROR: [TikTok] 7679101730352565535: Unexpected response from webpage request; please report this issue on  https://github.com/yt-dlp/yt-dlp/issues?q=";
+        var f = ExtractionErrorClassifier.Classify(unexpected);
+        Assert.Equal(ExtractionFailureKind.TransientExtraction, f.Kind);
+        Assert.True(f.IsRetryable);
+    }
+
     // ── 2026-08-02 실사이트 검증에서 채집한 추가 시그니처 ──
 
     private const string InstagramPhotoPost =

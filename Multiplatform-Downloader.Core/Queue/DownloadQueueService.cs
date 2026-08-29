@@ -353,13 +353,19 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
                 }
                 catch (MetadataFetchException ex)
                 {
-                    var retryable = ex.Failure?.IsRetryable ?? false; // 네트워크 계열만(NFR-D2)
-                    if (retryable && attempt < maxRetry)
+                    var retryable = ex.Failure?.IsRetryable ?? false; // 네트워크 + 일시적 추출(NFR-D2)
+                    // 일시적 추출 실패(TikTok JS 챌린지)는 프로세스 재실행으로 회복되므로 더 많이·짧게 재시도한다.
+                    // ~35% 성공률 기준 6회 시도면 ~92% 회복. 챌린지는 빠르므로 지수 백오프 대신 짧은 고정 지연.
+                    var transient = ex.Failure?.Kind == ExtractionFailureKind.TransientExtraction;
+                    var effectiveMax = transient ? Math.Max(maxRetry, 6) : maxRetry;
+                    if (retryable && attempt < effectiveMax)
                     {
-                        _logger.Warning("Queue", $"[{Tag(item)}] 분석 실패(네트워크) — 재시도 {attempt + 1}/{maxRetry}: {ex.Message}");
+                        _logger.Warning("Queue", $"[{Tag(item)}] 분석 실패({(transient ? "일시적" : "네트워크")}) — 재시도 {attempt + 1}/{effectiveMax}: {ex.Message}");
                         if (!SafeTransition(item, item.ReturnToQueued))
                             return; // 재시도 준비 중 상태 경합
-                        var delay = TimeSpan.FromTicks(_retryDelayBase.Ticks << attempt); // 1s→2s→4s
+                        var delay = transient
+                            ? TimeSpan.FromMilliseconds(Math.Min(_retryDelayBase.TotalMilliseconds, 700)) // 짧은 고정
+                            : TimeSpan.FromTicks(_retryDelayBase.Ticks << attempt);                        // 1s→2s→4s
                         await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                         continue;
                     }
@@ -456,7 +462,20 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
                     CookieFile: cookies.CookieFile,
                     CookieFromBrowser: cookies.FromBrowser);
 
-                result = await _engine.DownloadAsync(request, progress, cancellationToken).ConfigureAwait(false);
+                // 다운로드 단계도 yt-dlp가 페이지를 재추출하므로 TikTok JS 챌린지 간헐 실패가 재발할 수 있다.
+                // 분석과 동일하게 일시적 추출 실패는 짧게 여러 번 재시도한다(FR-D2, 실측 2026-08-30).
+                const int transientMax = 6;
+                for (var attempt = 0; ; attempt++)
+                {
+                    result = await _engine.DownloadAsync(request, progress, cancellationToken).ConfigureAwait(false);
+                    if (result.Success)
+                        break;
+                    var failure = ExtractionErrorClassifier.Classify(result.ErrorLine ?? string.Empty);
+                    if (failure.Kind != ExtractionFailureKind.TransientExtraction || attempt >= transientMax)
+                        break;
+                    _logger.Warning("Queue", $"[{Tag(item)}] 다운로드 실패(일시적) — 재시도 {attempt + 1}/{transientMax}");
+                    await Task.Delay(TimeSpan.FromMilliseconds(Math.Min(_retryDelayBase.TotalMilliseconds, 700)), cancellationToken).ConfigureAwait(false);
+                }
             }
 
             if (result.Success)

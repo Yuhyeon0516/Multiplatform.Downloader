@@ -19,6 +19,9 @@ public enum ExtractionFailureKind
     LoginOrBotCheck,
     /// <summary>영상이 없는 게시물(실측: Instagram 사진 게시물 → 'No video formats found').</summary>
     NoVideoContent,
+    /// <summary>일시적 추출 실패 — 재시도로 회복 가능(실측 2026-08-30: TikTok JS 챌린지가 간헐 실패,
+    /// 'Unable to extract universal data for rehydration'. 같은 URL이 프로세스 재실행마다 ~35% 성공).</summary>
+    TransientExtraction,
     /// <summary>분류 불가 — 원문 보존.</summary>
     Unknown,
 }
@@ -26,8 +29,8 @@ public enum ExtractionFailureKind
 /// <summary>분류 결과. <see cref="UserMessage"/>는 카드에 표시할 한국어 문구.</summary>
 public sealed record ExtractionFailure(ExtractionFailureKind Kind, string UserMessage, string RawErrorLine)
 {
-    /// <summary>자동 재시도 대상인지(네트워크 계열만 — NFR-D2).</summary>
-    public bool IsRetryable => Kind == ExtractionFailureKind.Network;
+    /// <summary>자동 재시도 대상인지(네트워크 계열 + 일시적 추출 실패 — NFR-D2).</summary>
+    public bool IsRetryable => Kind is ExtractionFailureKind.Network or ExtractionFailureKind.TransientExtraction;
 }
 
 /// <summary>
@@ -121,6 +124,15 @@ public static class ExtractionErrorClassifier
 
         if (Contains(line, "[TikTok]") && Contains(line, "IP address is blocked"))
             return new(ExtractionFailureKind.TikTokBlockedOrGone, "게시물이 없거나 접근할 수 없습니다 (지역·IP 제한 가능)", line);
+
+        // 실측(2026-08-30): TikTok의 새 JS 챌린지가 간헐 실패 → 세 가지 시그니처로 나타남
+        // ('Unable to extract universal data for rehydration' / 'Unexpected response from webpage request' /
+        // challenge). 같은 URL이 프로세스 재실행마다 ~35% 성공하는 순수 일시 오류이므로 재시도로 회복(FR-D2).
+        if (Contains(line, "[TikTok]") &&
+            (Contains(line, "Unable to extract universal data for rehydration")
+             || Contains(line, "Unexpected response from webpage request")
+             || Contains(line, "challenge")))
+            return new(ExtractionFailureKind.TransientExtraction, "틱톡 확인 절차 중 — 자동으로 다시 시도합니다", line);
 
         if (Contains(line, "Video unavailable") || Contains(line, "not available"))
             return new(ExtractionFailureKind.VideoUnavailable, "삭제되었거나 비공개인 영상입니다", line);
