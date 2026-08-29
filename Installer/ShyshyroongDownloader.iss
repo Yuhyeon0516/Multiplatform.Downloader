@@ -83,6 +83,10 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 ; 파일 드래그를 조용히 차단한다(FR-DG5) — 반드시 현재 사용자 권한으로 실행
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; \
     Flags: nowait postinstall skipifsilent runascurrentuser
+; 자동 업데이트 경로(/SILENT /AUTORELAUNCH=1) 전용 재실행(FR-U7.1). skipifsilent가 위 항목을 건너뛰므로
+; 사일런트 설치에서도 앱이 다시 뜨도록 별도 항목. /updated 인자로 앱이 '업데이트 완료' 토스트를 표시.
+Filename: "{app}\{#MyAppExeName}"; Parameters: "/updated"; \
+    Flags: nowait runascurrentuser skipifdoesntexist; Check: WantAutoRelaunch
 
 [UninstallDelete]
 ; 번들 엔진·확장 등 런타임 잔여물 정리 (사용자 다운로드/설정은 보존)
@@ -116,7 +120,27 @@ var
 begin
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/IM "{#MyAppExeName}" /F', '',
        SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // 엔진 자식(yt-dlp/ffmpeg)이 고아로 남아 {app}\tools 를 잠그면 새 파일 복사가 실패해
+  // 부분 설치가 된다(FR-U7.2). 앱과 함께 강제 종료한다.
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/IM "yt-dlp.exe" /F', '',
+       SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/IM "ffmpeg.exe" /F', '',
+       SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(800); // 파일 핸들 해제 대기
+end;
+
+// /AUTORELAUNCH=1 인자가 전달됐는지 — 자동 업데이트 사일런트 재실행 판정(FR-U7.1)
+function WantAutoRelaunch(): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), '/AUTORELAUNCH=1') = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
 end;
 
 // 설치 최초 단계(엘리베이션 직후)에서 앱을 종료 — 파일 잠금으로 인한 설치 롤백/구버전 잔존 방지.

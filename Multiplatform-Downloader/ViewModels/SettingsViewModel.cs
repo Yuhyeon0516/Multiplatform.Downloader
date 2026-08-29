@@ -20,6 +20,7 @@ internal sealed class SettingsViewModel : Screen
     private bool _closeToTray;
     private bool _notifyOnComplete;
     private bool _autoStartDownload;
+    private bool _autoUpdateCheck;
     private AppTheme _theme;
     private CookieSource _cookieSource;
     private string? _cookieFilePath;
@@ -40,6 +41,7 @@ internal sealed class SettingsViewModel : Screen
         _closeToTray = c.CloseToTray;
         _notifyOnComplete = c.NotifyOnComplete;
         _autoStartDownload = c.AutoStartDownload;
+        _autoUpdateCheck = c.AutoUpdateCheck;
         _theme = c.Theme;
         _cookieSource = c.CookieSource;
         _cookieFilePath = c.CookieFilePath;
@@ -62,6 +64,9 @@ internal sealed class SettingsViewModel : Screen
     public bool CloseToTray { get => _closeToTray; set { _closeToTray = value; NotifyOfPropertyChange(); } }
     public bool NotifyOnComplete { get => _notifyOnComplete; set { _notifyOnComplete = value; NotifyOfPropertyChange(); } }
     public bool AutoStartDownload { get => _autoStartDownload; set { _autoStartDownload = value; NotifyOfPropertyChange(); } }
+
+    /// <summary>시작 시 최신 버전 자동 확인(FR-U6.1).</summary>
+    public bool AutoUpdateCheck { get => _autoUpdateCheck; set { _autoUpdateCheck = value; NotifyOfPropertyChange(); } }
     public AppTheme Theme { get => _theme; set { _theme = value; NotifyOfPropertyChange(); } }
     public CookieSource CookieSource
     {
@@ -115,6 +120,7 @@ internal sealed class SettingsViewModel : Screen
         c.CloseToTray = CloseToTray;
         c.NotifyOnComplete = NotifyOnComplete;
         c.AutoStartDownload = AutoStartDownload;
+        c.AutoUpdateCheck = AutoUpdateCheck;
         c.Theme = Theme;
         c.CookieSource = CookieSource;
         c.CookieFilePath = CookieFilePath;

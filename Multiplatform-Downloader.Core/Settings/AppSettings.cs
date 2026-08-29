@@ -24,6 +24,12 @@ public sealed class AppSettings
     /// <summary>등록하면 분석 후 자동으로 다운로드를 시작한다(FR-N3.1). 기본 false — 기존 '분석 후 대기' 동작 유지.</summary>
     public bool AutoStartDownload { get; set; }
 
+    /// <summary>시작 시 최신 버전을 자동 확인한다(FR-U6.1). 기본 true.</summary>
+    public bool AutoUpdateCheck { get; set; } = true;
+
+    /// <summary>사용자가 [이 버전 건너뛰기]한 버전(FR-U4.4). 없으면 null. 파싱 불가 시 '스킵 없음' 폴백.</summary>
+    public string? SkippedVersion { get; set; }
+
     public AppTheme Theme { get; set; } = AppTheme.System;
     public CookieSource CookieSource { get; set; } = CookieSource.None;
     public string? CookieFilePath { get; set; }
@@ -60,6 +66,8 @@ public sealed class AppSettings
             CloseToTray = CloseToTray,
             NotifyOnComplete = NotifyOnComplete,
             AutoStartDownload = AutoStartDownload,
+            AutoUpdateCheck = AutoUpdateCheck,       // NFR-U3 — 복사 누락 시 매 로드/저장 리셋됨
+            SkippedVersion = SkippedVersion,         // NFR-U3
             Theme = Theme,
             CookieSource = CookieSource,
             CookieFilePath = CookieFilePath,

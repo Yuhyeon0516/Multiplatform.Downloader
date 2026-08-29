@@ -1,17 +1,54 @@
 using Caliburn.Micro;
+using Multiplatform_Downloader.Services;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Multiplatform_Downloader.ViewModels;
 
-/// <summary>프로그램 정보(About) 창. 이름·버전·개발자·번들 엔진·사용 범위를 표시한다.</summary>
+/// <summary>프로그램 정보(About) 창. 이름·버전·개발자·번들 엔진·사용 범위 + 수동 업데이트 확인(FR-U6.2).</summary>
 internal sealed class AboutViewModel : Screen
 {
-    public AboutViewModel()
+    private readonly UpdateCoordinator? _updateCoordinator;
+
+    public AboutViewModel(UpdateCoordinator? updateCoordinator = null)
     {
+        _updateCoordinator = updateCoordinator;
         DisplayName = "정보";
         var v = Assembly.GetExecutingAssembly().GetName().Version;
         Version = v is not null ? $"v{v.ToString(3)}" : "v?";
+    }
+
+    private string _updateStatus = string.Empty;
+    /// <summary>수동 업데이트 확인 결과 메시지(FR-U6.3).</summary>
+    public string UpdateStatus { get => _updateStatus; private set { _updateStatus = value; NotifyOfPropertyChange(); } }
+
+    private bool _isChecking;
+    public bool IsChecking { get => _isChecking; private set { _isChecking = value; NotifyOfPropertyChange(); NotifyOfPropertyChange(nameof(CanCheckUpdate)); } }
+
+    public bool CanCheckUpdate => !IsChecking && _updateCoordinator is not null;
+
+    /// <summary>[업데이트 확인] — 수동 경로. 최신/실패도 명시 피드백(FR-U6.3).</summary>
+    public async Task CheckUpdate()
+    {
+        if (_updateCoordinator is null)
+            return;
+        IsChecking = true;
+        UpdateStatus = "확인 중…";
+        try
+        {
+            var outcome = await _updateCoordinator.CheckManualAsync();
+            UpdateStatus = outcome switch
+            {
+                ManualCheckOutcome.UpToDate => $"현재 최신 버전입니다 ({Version})",
+                ManualCheckOutcome.UpdateAvailable => "새 버전 안내 창을 확인하세요",
+                _ => "확인할 수 없습니다 (네트워크·요청 한도 확인)",
+            };
+        }
+        finally
+        {
+            IsChecking = false;
+        }
     }
 
     public string ProductName { get; } = "샤샤룽 다운로더";

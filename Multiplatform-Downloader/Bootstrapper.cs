@@ -9,6 +9,7 @@ using Multiplatform_Downloader.Core.Net;
 using Multiplatform_Downloader.Core.Platforms;
 using Multiplatform_Downloader.Core.Queue;
 using Multiplatform_Downloader.Core.Settings;
+using Multiplatform_Downloader.Core.Update;
 using Multiplatform_Downloader.Services;
 using Multiplatform_Downloader.ViewModels;
 using System;
@@ -189,6 +190,112 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
             await Task.Delay(300);
             await splash.TryCloseAsync();
         }
+
+        // 자동 업데이트 확인(FR-U) — 셸 표시·복원 완료 후. 프로토콜 인자 기동 세션은 안내 보류(FR-U4.3).
+        var isProtocolSession = Array.Exists(e.Args, a => a.StartsWith("mpdl://", StringComparison.OrdinalIgnoreCase));
+        if (container is not null && !isProtocolSession)
+            ScheduleUpdateCheck(container, windowVisible: !minimized);
+
+        _postInstallToast = Array.Exists(e.Args, a => string.Equals(a, "/updated", StringComparison.OrdinalIgnoreCase));
+        if (_postInstallToast && container is not null)
+            TryRun(() => container.Resolve<TrayIconService>().ShowNotification(
+                "업데이트 완료", $"v{typeof(Bootstrapper).Assembly.GetName().Version?.ToString(3)}(으)로 업데이트되었습니다"));
+    }
+
+    private bool _postInstallToast;
+
+    /// <summary>셸 표시 후 지연 트리거로 자동 업데이트를 확인한다(NFR-U1). fire-and-forget 아님 — 로깅 continuation.</summary>
+    private void ScheduleUpdateCheck(IContainer container, bool windowVisible)
+    {
+        var coordinator = container.Resolve<UpdateCoordinator>();
+        var logger = container.Resolve<IAppLogger>();
+
+        // 설치 전환 콜백(FR-U5.1): PauseAll → 태스크 정리 대기 → 큐 flush → Process.Start → Shutdown
+        coordinator.InstallAction = installerPath => StartInstallAsync(container, installerPath);
+        coordinator.ShowMainWindowAction = ShowMainWindow;
+        coordinator.BalloonAction = (title, msg) =>
+            TryRun(() => container.Resolve<TrayIconService>().ShowNotification(title, msg));
+
+        // 셸이 완전히 자리잡은 뒤(3초) 확인 — UI 미블로킹. Dispatcher.InvokeAsync(Func<Task>)를
+        // 명시적으로 await해 async void 경합을 피한다(M5). CheckAutoAsync는 내부에서 UI 접근하므로 UI 스레드에서 실행.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3));
+                await Application.Current.Dispatcher.InvokeAsync(
+                    () => coordinator.CheckAutoAsync(windowVisible, CancellationTokenSourceHandler.Token)).Task.Unwrap();
+            }
+            catch (Exception ex) { logger.Warning("Update", $"자동 확인 실패: {ex.GetType().Name} {ex.Message}"); }
+        });
+    }
+
+    private bool _installing;
+
+    /// <summary>설치 전환(FR-U5.1) — 활성 다운로드 정리 → 큐 저장 완주 → 인스톨러 실행 → 앱 종료.
+    /// 반환: 인스톨러 실행에 성공해 앱 종료가 예정됐으면 true, 취소·거부면 false(M1).</summary>
+    private async Task<bool> StartInstallAsync(IContainer container, string installerPath)
+    {
+        if (_installing)
+            return true; // 재진입 가드 — 중복 인스톨러 실행 방지(M1)
+        _installing = true;
+
+        var logger = container.Resolve<IAppLogger>();
+        var queue = container.Resolve<IDownloadQueueService>();
+
+        // 진행 중 다운로드가 있으면 확인(FR-U5.1)
+        var active = queue.Items.Count(i => i.Status is DownloadStatus.Downloading or DownloadStatus.Analyzing or DownloadStatus.Merging);
+        if (active > 0)
+        {
+            var confirm = new ConfirmDialogViewModel(
+                "업데이트 설치",
+                $"진행 중인 다운로드 {active}건이 중단됩니다. 계속할까요?",
+                confirmText: "설치", cancelText: "취소");
+            await container.Resolve<IWindowManager>().ShowDialogAsync(confirm);
+            if (!confirm.Confirmed)
+            {
+                _installing = false;
+                return false; // UpdateViewModel이 '취소됨' 상태로 복귀
+            }
+        }
+
+        // yt-dlp/ffmpeg 자식을 확실히 정리(고아 → tools 잠금 방지, ISS-02). CTS 취소가 프로세스 트리 종료를 발동.
+        TryRun(() => queue.PauseAll());
+        await Task.Delay(500); // 취소 전파·프로세스 종료 여유
+
+        // 큐 flush 저장 완주(ISS-03) — taskkill 경합 전에 반드시 저장
+        try
+        {
+            if (_queuePersistence is not null)
+                await _queuePersistence.SaveAsync(queue.Items).WaitAsync(TimeSpan.FromSeconds(3));
+        }
+        catch (Exception ex) { logger.Warning("Update", $"종료 전 큐 저장 실패: {ex.Message}"); }
+
+        // 인스톨러 실행 — /SILENT + /AUTORELAUNCH(설치 후 앱 재실행, FR-U7.1). UAC 승격.
+        try
+        {
+            var psi = new ProcessStartInfo(installerPath, "/SILENT /AUTORELAUNCH=1") { UseShellExecute = true };
+            Process.Start(psi);
+            logger.Info("Update", $"인스톨러 실행: {installerPath}");
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            logger.Info("Update", "UAC 거부 — 설치 취소");
+            _installing = false;
+            return false; // UAC 거부 — 앱 유지(FR-U5.2)
+        }
+        catch (Exception ex)
+        {
+            logger.Warning("Update", $"인스톨러 실행 실패: {ex.Message}");
+            _installing = false;
+            return false;
+        }
+
+        // 실행 성공 확인 후에만 종료(FR-U5.1) — OnExit이 큐 저장·정리 수행
+        _exiting = true;
+        TryRun(() => container.Resolve<TrayIconService>().Dispose());
+        Application.Current?.Shutdown();
+        return true;
     }
 
     /// <summary>큐 영속화 배선(FR-D3.5): ItemChanged 1초 디바운스 저장 + 종료 시 최종 저장.</summary>
@@ -479,6 +586,17 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
         builder.Register(_ => new ProtocolRegistrar()).AsSelf().SingleInstance();
         builder.RegisterType<TrayIconService>().AsSelf().SingleInstance();
         builder.RegisterType<ToastNotificationService>().AsSelf().SingleInstance();
+
+        // 자동 업데이트(FR-U): 상태 저장·체커·다운로더·조율자
+        builder.Register(_ => new JsonUpdateStateStore()).As<IUpdateStateStore>().SingleInstance();
+        builder.Register(c => new GitHubUpdateChecker(
+                c.Resolve<IUpdateStateStore>(), c.Resolve<IClock>(), c.Resolve<IAppLogger>()))
+            .As<IUpdateChecker>().SingleInstance();
+        builder.Register(c => new UpdateInstaller(c.Resolve<IAppLogger>())).AsSelf().SingleInstance();
+        builder.Register(c => new UpdateCoordinator(
+                c.Resolve<IUpdateChecker>(), c.Resolve<UpdateInstaller>(), c.Resolve<ISettingsService>(),
+                c.Resolve<IUpdateStateStore>(), c.Resolve<IClock>(), c.Resolve<IWindowManager>(), c.Resolve<IAppLogger>()))
+            .AsSelf().SingleInstance();
 
         logger.Info("App", "DI 컨테이너 구성 완료");
     }

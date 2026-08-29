@@ -49,9 +49,17 @@
                         <TextBlock DockPanel.Dock="Left" Text="번들 엔진" Width="86" Opacity="0.6" FontSize="13"/>
                         <TextBlock Text="{Binding EngineInfo}" FontSize="12.5" TextWrapping="Wrap"/>
                     </DockPanel>
-                    <DockPanel>
+                    <DockPanel Margin="0,0,0,12">
                         <TextBlock DockPanel.Dock="Left" Text="사용 범위" Width="86" Opacity="0.6" FontSize="13"/>
                         <TextBlock Text="{Binding UsageNotice}" FontSize="12" Opacity="0.85" TextWrapping="Wrap"/>
+                    </DockPanel>
+                    <!-- 수동 업데이트 확인(FR-U6.2) -->
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Left" Text="업데이트" Width="86" Opacity="0.6" FontSize="13"/>
+                        <Button x:Name="CheckUpdate" DockPanel.Dock="Left" Content="업데이트 확인"
+                                MinWidth="104" Padding="12,5" IsEnabled="{Binding CanCheckUpdate}"/>
+                        <TextBlock Text="{Binding UpdateStatus}" FontSize="12" Opacity="0.85"
+                                   VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
                     </DockPanel>
                 </StackPanel>
             </Border>

@@ -21,6 +21,7 @@ internal sealed class ShellViewModel : Screen
     private readonly IAppLogger _logger;
     private readonly IWindowManager _windowManager;
     private readonly BatchUrlParser _parser;
+    private readonly Services.UpdateCoordinator? _updateCoordinator;
     private string _urlInput = string.Empty;
     private bool _showLog;
     private QueueFilter _activeFilter = QueueFilter.All;
@@ -35,13 +36,15 @@ internal sealed class ShellViewModel : Screen
         ISettingsService settings,
         IAppLogger logger,
         IWindowManager windowManager,
-        BatchUrlParser parser)
+        BatchUrlParser parser,
+        Services.UpdateCoordinator? updateCoordinator = null)
     {
         _queue = queue ?? throw new ArgumentNullException(nameof(queue));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _windowManager = windowManager;
         _parser = parser;
+        _updateCoordinator = updateCoordinator;
 
         Items = new ObservableCollection<DownloadItemViewModel>();
         LogLines = new ObservableCollection<string>();
@@ -383,7 +386,7 @@ internal sealed class ShellViewModel : Screen
     {
         try
         {
-            await _windowManager.ShowDialogAsync(new AboutViewModel());
+            await _windowManager.ShowDialogAsync(new AboutViewModel(_updateCoordinator));
         }
         catch (Exception ex)
         {

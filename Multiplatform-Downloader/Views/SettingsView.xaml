@@ -60,6 +60,7 @@
                 <CheckBox Content="창 닫기 시 트레이로 최소화 (아니면 완전 종료)" IsChecked="{Binding CloseToTray}" Margin="0,4"/>
                 <CheckBox Content="완료/실패 알림 (토스트)" IsChecked="{Binding NotifyOnComplete}" Margin="0,4"/>
                 <CheckBox Content="자동 다운로드 (등록하면 분석 후 바로 받기)" IsChecked="{Binding AutoStartDownload}" Margin="0,4"/>
+                <CheckBox Content="시작 시 업데이트 자동 확인" IsChecked="{Binding AutoUpdateCheck}" Margin="0,4"/>
 
                 <TextBlock Text="고급" Style="{StaticResource Section}"/>
                 <TextBlock Text="로그인 쿠키 (Instagram/샤오홍슈 로그인 콘텐츠용)" Style="{StaticResource Label}"/>
