@@ -106,6 +106,10 @@ internal static class ThemeService
         }
     }
 
+    /// <summary>특정 창의 타이틀바를 현재 테마로 맞춘다(핸들 준비된 시점에 명시 호출용 — 예: 플레이어 SourceInitialized).
+    /// Loaded 클래스 핸들러가 타이밍상 놓치는 창을 보강한다.</summary>
+    public static void ApplyTitleBarTo(Window window) => ApplyTitleBar(window);
+
     /// <summary>설정값에 따라 앱 전체 테마를 즉시 적용한다. UI 스레드에서 호출한다.</summary>
     public static void Apply(AppTheme theme)
     {

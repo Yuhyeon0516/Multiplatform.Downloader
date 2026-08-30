@@ -22,6 +22,9 @@ public partial class PlayerView : Window
         InitializeComponent();
         Loaded += OnLoaded;
         Closed += OnClosed;
+        // 핸들 생성 직후 타이틀바를 앱 테마로 명시 적용 — Loaded 클래스 핸들러가 WebView2 호스트 창에서
+        // 타이밍상 놓쳐 타이틀바가 라이트로 남던 문제 보강(사용자 보고 2026-08-30).
+        SourceInitialized += (_, _) => Multiplatform_Downloader.Services.ThemeService.ApplyTitleBarTo(this);
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape)
