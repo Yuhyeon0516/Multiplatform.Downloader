@@ -19,6 +19,11 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+; 인스톨러 exe 자체의 FileVersion·ProductVersion을 채운다 — 자동 업데이트가 다운로드한
+; 인스톨러의 버전을 검증할 때 FileVersion을 읽으므로, 미지정 시 검증 실패로 설치가 차단된다
+; (실측 2026-08-30: 기본값은 FileVersion 공란 → 자동 설치 전건 실패).
+VersionInfoVersion={#MyAppVersion}
+VersionInfoProductVersion={#MyAppVersion}
 VersionInfoDescription={#MyAppNameEn} Setup
 DefaultDirName={autopf}\Shyshyroong Downloader
 DefaultGroupName={#MyAppName}

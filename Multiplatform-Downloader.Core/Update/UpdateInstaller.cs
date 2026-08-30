@@ -148,7 +148,9 @@ public sealed class UpdateInstaller : IUpdateInstaller, IDisposable
         }
     }
 
-    /// <summary>다운로드된 인스톨러의 FileVersion을 검증한다(FR-U3.4). public — 캐시 히트 시에도 실행 직전 재검증.</summary>
+    /// <summary>다운로드된 인스톨러의 버전을 검증한다(FR-U3.4). public — 캐시 히트 시에도 실행 직전 재검증.
+    /// Inno Setup 인스톨러 exe는 FileVersion이 비어 있고 ProductVersion(VersionInfoVersion)만 채워지므로
+    /// FileVersion 우선 · 비었으면 ProductVersion으로 폴백한다(실측 2026-08-30 — 이 폴백 없으면 설치 전건 차단).</summary>
     public UpdateDownloadResult VerifyInstaller(string path, Version advertised, Version currentVersion)
     {
         if (!File.Exists(path))
@@ -158,7 +160,8 @@ public sealed class UpdateInstaller : IUpdateInstaller, IDisposable
         catch (Exception ex) when (ex is IOException or FileNotFoundException)
         { return UpdateDownloadResult.Fail("버전 정보를 읽을 수 없습니다"); }
 
-        if (!Version.TryParse(fvi.FileVersion, out var fileVer))
+        if (!Version.TryParse(fvi.FileVersion, out var fileVer)
+            && !Version.TryParse(fvi.ProductVersion, out fileVer))
             return UpdateDownloadResult.Fail("설치 파일 버전 형식 오류");
 
         // 광고 버전과 일치(정규화)
