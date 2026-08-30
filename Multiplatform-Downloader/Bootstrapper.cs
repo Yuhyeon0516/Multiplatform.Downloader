@@ -92,16 +92,38 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
 
     protected override async void OnStartup(object sender, StartupEventArgs e)
     {
-        // 단일 인스턴스 보장(FR-08): 두 번째 인스턴스는 mpdl:// 인자만 기존 인스턴스에 파이프로 넘기고 즉시 종료
-        _instanceGuard = new SingleInstanceGuard(SingleInstanceMutexName);
-        if (!_instanceGuard.IsPrimaryInstance)
+        // 백그라운드/UI 스레드의 미처리 예외로 프로세스가 통째로 죽는 것을 방어·기록(2026-08-30 크래시 수정)
+        StartupGuards.RegisterGlobalExceptionHandlers();
+
+        // 관리자 권한으로 떴으면 일반 권한으로 자기 재실행 후 종료 — 확장 IPC 무결성 일치 보장(근본 수정).
+        // 자동 업데이트(/AUTORELAUNCH)가 앱을 관리자 권한으로 재기동시키면 크롬 확장 연동이 끊기고
+        // 파이프 접근 거부로 크래시했다(실측). 앱은 admin이 불필요하므로 항상 강등한다.
+        if (StartupGuards.TryRelaunchUnelevated(e.Args))
         {
-            var protocolArg = Array.Find(e.Args, a => a.StartsWith("mpdl://", StringComparison.OrdinalIgnoreCase));
-            if (protocolArg is not null)
-                await PipeIpcClient.TrySendAsync(IpcPipeName, protocolArg, TimeSpan.FromSeconds(2));
             _exiting = true;
-            Application.Current.Shutdown();
+            Application.Current?.Shutdown();
             return;
+        }
+
+        // 단일 인스턴스 보장(FR-08): 두 번째 인스턴스는 mpdl:// 인자만 기존 인스턴스에 파이프로 넘기고 즉시 종료.
+        // 어떤 실패도(뮤텍스/파이프 권한 거부·경쟁) 크래시로 이어지지 않도록 감싼다 — async void라 미처리 시 즉사.
+        try
+        {
+            _instanceGuard = new SingleInstanceGuard(SingleInstanceMutexName);
+            if (!_instanceGuard.IsPrimaryInstance)
+            {
+                var protocolArg = Array.Find(e.Args, a => a.StartsWith("mpdl://", StringComparison.OrdinalIgnoreCase));
+                if (protocolArg is not null)
+                    await PipeIpcClient.TrySendAsync(IpcPipeName, protocolArg, TimeSpan.FromSeconds(2));
+                _exiting = true;
+                Application.Current.Shutdown();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            // 단일 인스턴스 판정 실패는 앱 기동을 막지 않는다 — 주 인스턴스로 계속 진행
+            Debug.WriteLine($"[Bootstrapper] SingleInstance/IPC 실패(무시하고 계속): {ex}");
         }
 
         base.OnStartup(sender, e);
