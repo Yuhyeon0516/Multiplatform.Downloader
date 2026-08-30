@@ -24,7 +24,7 @@ internal sealed class PlayerViewModel : Screen
     /// <summary>이전/다음 이동 시 뷰가 다시 내비게이트하도록 알린다.</summary>
     public event System.Action? MediaChanged; // Caliburn.Micro.Action과의 모호성 방지
 
-    public PlayerViewModel(IReadOnlyList<PlayerItem> playlist, int startIndex, IAppLogger? logger = null)
+    public PlayerViewModel(IReadOnlyList<PlayerItem> playlist, int startIndex, IAppLogger? logger = null, bool isDarkTheme = true)
     {
         ArgumentNullException.ThrowIfNull(playlist);
         if (playlist.Count == 0)
@@ -32,8 +32,12 @@ internal sealed class PlayerViewModel : Screen
         _playlist = playlist;
         _index = Math.Clamp(startIndex, 0, playlist.Count - 1);
         _logger = logger ?? NullAppLogger.Instance;
+        IsDarkTheme = isDarkTheme;
         DisplayName = WindowTitle;
     }
+
+    /// <summary>현재 앱 테마가 다크인지 — WebView2 내장 재생 컨트롤의 color-scheme를 맞춘다.</summary>
+    public bool IsDarkTheme { get; }
 
     public PlayerItem Current => _playlist[_index];
     public string WindowTitle => $"재생 — {Current.Title}";
@@ -75,6 +79,7 @@ internal sealed class PlayerViewModel : Screen
             return;
         _index = index;
         StatusText = string.Empty;
+        _fellBackThisItem = false;
         NotifyOfPropertyChange(string.Empty);
         MediaChanged?.Invoke();
     }
@@ -113,6 +118,22 @@ internal sealed class PlayerViewModel : Screen
         NotifyOfPropertyChange(nameof(StatusText));
         NotifyOfPropertyChange(nameof(HasStatus));
         _logger.Warning("Player", $"인앱 재생 실패[{detail}]: {Path.GetFileName(CurrentPath)}");
+    }
+
+    private bool _fellBackThisItem;
+
+    /// <summary>영상 트랙이 디코드되지 않을 때(videoWidth=0, 예: TikTok HEVC) 자동으로 기본 플레이어로 연다.
+    /// WebView2는 HEVC를 소리만 내고 화면이 검게 나오므로(실측 2026-08-30, 0x0), OS 코덱을 쓰는 기본 플레이어로 폴백.</summary>
+    public void OnUnplayableVideoTrack()
+    {
+        if (_fellBackThisItem)
+            return; // 항목당 1회
+        _fellBackThisItem = true;
+        StatusText = "이 코덱(HEVC 등)은 인앱 재생이 안 돼 기본 플레이어로 엽니다";
+        NotifyOfPropertyChange(nameof(StatusText));
+        NotifyOfPropertyChange(nameof(HasStatus));
+        _logger.Info("Player", $"영상 트랙 디코드 불가(0x0) — 기본 플레이어 폴백: {Path.GetFileName(CurrentPath)}");
+        OpenInDefaultPlayer();
     }
 
     /// <summary>내비게이트 대상 로깅 — URL 이스케이프 문제 진단용.</summary>

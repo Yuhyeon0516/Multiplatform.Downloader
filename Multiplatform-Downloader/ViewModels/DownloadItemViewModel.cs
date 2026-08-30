@@ -29,6 +29,7 @@ internal sealed class DownloadItemViewModel : PropertyChangedBase
     private readonly int _thumbRetryCount;
     private string? _outputPath;
     private IReadOnlyList<string>? _attemptedCandidates; // 후보 목록 참조 — 같은 목록 재시도 방지
+    private bool _localThumbTried; // 로컬 프레임 썸네일 폴백 1회 시도 가드
     private IReadOnlyList<Core.Models.MediaFormat>? _optionsSourceFormats; // 옵션 캐시 무효화 기준(참조 비교)
 
     public DownloadItemViewModel(DownloadItem item, IDownloadQueueService queue, int thumbRetryCount = 2, IAppLogger? logger = null)
@@ -308,14 +309,19 @@ internal sealed class DownloadItemViewModel : PropertyChangedBase
             ? item.ThumbnailCandidates
             : (string.IsNullOrWhiteSpace(item.ThumbnailPath) ? [] : new[] { item.ThumbnailPath! });
 
-        if (candidates.Count == 0 || ReferenceEquals(candidates, _attemptedCandidates))
-            return; // 후보 없음 또는 같은 목록을 이미 시도함(성공/실패 무관 — 재분석 시 새 참조로 재시도)
+        // 완료 항목은 원격 썸네일이 없거나(복원 목록) 만료(403)돼도 로컬 파일에서 프레임을 뽑아 미리보기를 만든다.
+        var localVideo = item.Status == DownloadStatus.Completed ? item.OutputFilePath : null;
 
-        _attemptedCandidates = candidates;
-        _ = LoadThumbnailAsync(candidates);
+        var sameCandidates = candidates.Count > 0 && ReferenceEquals(candidates, _attemptedCandidates);
+        if ((candidates.Count == 0 || sameCandidates) && (string.IsNullOrEmpty(localVideo) || _localThumbTried))
+            return; // 시도할 새 후보도, 미시도 로컬 폴백도 없음
+
+        if (candidates.Count > 0)
+            _attemptedCandidates = candidates;
+        _ = LoadThumbnailAsync(candidates, localVideo);
     }
 
-    private async Task LoadThumbnailAsync(IReadOnlyList<string> candidates)
+    private async Task LoadThumbnailAsync(IReadOnlyList<string> candidates, string? localVideo = null)
     {
         var lastReason = "후보 없음";
 
@@ -384,6 +390,28 @@ internal sealed class DownloadItemViewModel : PropertyChangedBase
                 NotifyOfPropertyChange(nameof(ThumbFailed));
             });
             return;
+        }
+
+        // 원격 후보 전부 실패·부재 → 완료된 로컬 파일에서 프레임 추출 폴백(썸네일 만료/미상 대응)
+        if (!string.IsNullOrEmpty(localVideo) && !_localThumbTried)
+        {
+            _localThumbTried = true;
+            var resolved = ShellViewModel.ResolveMediaPath(localVideo);
+            var frame = await Services.WebpImageConverter.ExtractVideoFrameAsync(resolved).ConfigureAwait(false);
+            var frameBitmap = frame is not null ? TryDecode(frame) : null;
+            if (frameBitmap is not null)
+            {
+                OnUi(() =>
+                {
+                    Thumbnail = frameBitmap;
+                    HasThumbnail = true;
+                    ThumbFailed = false;
+                    NotifyOfPropertyChange(nameof(Thumbnail));
+                    NotifyOfPropertyChange(nameof(HasThumbnail));
+                    NotifyOfPropertyChange(nameof(ThumbFailed));
+                });
+                return;
+            }
         }
 
         // 전 후보 실패(FR-D1.6) — 가시화 + 로그 1줄(NFR-D1)

@@ -440,7 +440,8 @@ internal sealed class ShellViewModel : Screen
             }
             var resolved = ResolveMediaPath(card.OutputPath);
             var index = playlist.FindIndex(p => p.Path == resolved);
-            var vm = new PlayerViewModel(playlist, Math.Max(index, 0), _logger);
+            var isDark = !Services.ThemeService.IsEffectiveLight(_settings.Current.Theme);
+            var vm = new PlayerViewModel(playlist, Math.Max(index, 0), _logger, isDark);
             _logger.Info("UI", $"플레이어 열기: {System.IO.Path.GetFileName(card.OutputPath)}");
             await _windowManager.ShowWindowAsync(vm); // 비모달 — 큐 조작과 병행
         }
