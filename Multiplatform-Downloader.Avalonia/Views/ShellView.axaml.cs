@@ -43,11 +43,14 @@ public partial class ShellView : Window
         }
     }
 
-    /// <summary>오버플로 메뉴 항목 클릭 시 플라이아웃을 닫는다(액션은 Command가 수행).</summary>
+    /// <summary>오버플로 메뉴 항목 클릭 시 플라이아웃을 닫는다(액션은 Command가 수행).
+    /// 주의: Button은 Click 이벤트 → Command 순서로 실행하므로, 여기서 동기로 닫으면
+    /// 버튼이 트리에서 분리되며 Command 바인딩이 해제돼 액션이 실행되지 않는다(실측) —
+    /// 닫기를 디스패처로 미뤄 커맨드 실행 이후에 닫는다.</summary>
     private void OnOverflowActionClick(object? sender, RoutedEventArgs e)
     {
-        var presenter = (sender as Control)?.FindAncestorOfType<FlyoutPresenter>();
-        if (presenter?.Parent is Popup popup)
-            popup.Close();
+        var popup = (sender as Control)?.FindAncestorOfType<Popup>();
+        if (popup is not null)
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(popup.Close);
     }
 }

@@ -59,6 +59,14 @@ internal sealed class PlayerViewModel : Screen
     public string StatusText { get; private set; } = string.Empty;
     public bool HasStatus => StatusText.Length > 0;
 
+    /// <summary>뷰의 진행 안내(형식 변환 중 등) — 빈 문자열이면 숨김.</summary>
+    public void SetStatus(string text)
+    {
+        StatusText = text;
+        NotifyOfPropertyChange(nameof(StatusText));
+        NotifyOfPropertyChange(nameof(HasStatus));
+    }
+
     public bool CanPrevItem => _index > 0;
     public bool CanNextItem => _index < _playlist.Count - 1;
 

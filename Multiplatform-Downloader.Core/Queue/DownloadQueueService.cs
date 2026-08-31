@@ -715,7 +715,13 @@ public sealed class DownloadQueueService : IDownloadQueueService, IDisposable
         if (string.IsNullOrEmpty(id))
             return fallback;
         var format = item.Formats.FirstOrDefault(f => f.FormatId == id);
-        return format?.IsVideoOnly == true ? $"{id}+bestaudio/{fallback}" : $"{id}/{fallback}";
+        if (format?.IsVideoOnly != true)
+            return $"{id}/{fallback}";
+        // macOS: opus 오디오와 병합하면 mkv가 되는데 WKWebView/QuickTime이 재생 불가 —
+        // m4a(AAC)를 우선해 mp4 산출을 유도한다(없으면 기존과 동일하게 bestaudio)
+        return OperatingSystem.IsMacOS()
+            ? $"{id}+bestaudio[ext=m4a]/{id}+bestaudio/{fallback}"
+            : $"{id}+bestaudio/{fallback}";
     }
 
     private static bool IsFinished(DownloadStatus status)

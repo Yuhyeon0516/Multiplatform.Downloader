@@ -34,7 +34,11 @@ public partial class PlayerView : Window
             LoadCurrent();
     }
 
-    private void LoadCurrent()
+    private int _loadVersion;
+
+    private void LoadCurrent() => _ = LoadCurrentAsync();
+
+    private async Task LoadCurrentAsync()
     {
         if (_vm is null)
             return;
@@ -44,7 +48,23 @@ public partial class PlayerView : Window
             return;
         }
 
-        var fileUrl = new Uri(_vm.CurrentPath).AbsoluteUri; // file:// 이스케이프 처리
+        var version = ++_loadVersion; // 변환 중 이전/다음 이동 시 이전 로드 무시
+        var sourcePath = _vm.CurrentPath;
+
+        // WKWebView는 MKV/WebM을 재생하지 못한다 — 비호환 컨테이너는 임시 mp4로 변환(§9 macOS 분기)
+        if (!Services.PlaybackTranscoder.IsDirectlyPlayable(sourcePath))
+            _vm.SetStatus("재생 형식 변환 중… (비디오 무손실 복사)");
+        var playable = await Services.PlaybackTranscoder.EnsurePlayableAsync(sourcePath);
+        if (version != _loadVersion || _vm is null)
+            return;
+        if (playable is null)
+        {
+            _vm.OnMediaError($"{System.IO.Path.GetExtension(sourcePath).TrimStart('.').ToUpperInvariant()} 변환 실패");
+            return;
+        }
+        _vm.SetStatus(string.Empty);
+
+        var fileUrl = new Uri(playable).AbsoluteUri; // file:// 이스케이프 처리
         _vm.LogNavigate(fileUrl);
         var bg = _vm.IsDarkTheme ? "#101215" : "#F4F5F7";
         var html = $$"""
