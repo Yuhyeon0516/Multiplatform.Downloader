@@ -343,7 +343,8 @@ public class DownloadQueueServiceTests
         metadata.StopFailing(); // 이제 성공하게
         sut.Retry(item.Id);
 
-        await WaitForAsync(() => item.Status == DownloadStatus.Ready);
+        // Ready 전이와 Title 반영이 워커 스레드에서 일어나므로 둘 다 기다린다(CI 플레이키 방지)
+        await WaitForAsync(() => item.Status == DownloadStatus.Ready && item.Title == "테스트");
         Assert.Equal("테스트", item.Title);
     }
 
