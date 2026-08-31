@@ -248,9 +248,10 @@
             </DockPanel>
           </Border>
           <!-- 가로 스크롤 금지 — 긴 제목이 카드 폭을 밀어내지 않고 말줄임되도록 -->
-          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                        Padding="16,12,16,58">
-            <ItemsControl ItemsSource="{Binding ItemsView}">
+          <!-- 여백은 ItemsControl Margin으로 — ScrollViewer.Padding은 콘텐츠 폭 측정에 반영되지 않아
+               카드 우측이 패딩만큼 잘린다(실측) -->
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding ItemsView}" Margin="16,12,16,58">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <Border Background="{DynamicResource WfSurfaceBrush}" BorderBrush="{DynamicResource WfLineBrush}"
