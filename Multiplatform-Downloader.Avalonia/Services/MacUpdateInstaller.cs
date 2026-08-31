@@ -176,9 +176,14 @@ public sealed class MacUpdateInstaller : IUpdatePackageProvider, IDisposable
             }
             try { Directory.Delete(old, recursive: true); } catch { /* 다음 실행에서 정리 */ }
 
-            // 재실행 — -n 새 인스턴스, 현재 프로세스 종료 후 뜨도록 open은 즉시 반환된다
-            RunSync("/usr/bin/open", "-n", bundle);
-            _logger.Info("Update", $"번들 교체 완료 — 재실행: {bundle}");
+            // 재실행 — 구 인스턴스가 완전히 종료(OnExit 큐 저장 포함)된 뒤 뜨도록 분리 셸에서 지연 실행.
+            // 즉시 open하면 새 인스턴스가 구 인스턴스를 보고 '두 번째 인스턴스'로 물러난다(실측).
+            var psi = new ProcessStartInfo("/bin/sh") { UseShellExecute = false, CreateNoWindow = true };
+            psi.ArgumentList.Add("-c");
+            psi.ArgumentList.Add("sleep 3; exec /usr/bin/open -n \"$0\"");
+            psi.ArgumentList.Add(bundle);
+            Process.Start(psi); // 대기하지 않음 — 부모 종료 후에도 sh가 살아 재실행을 수행
+            _logger.Info("Update", $"번들 교체 완료 — 3초 후 재실행 예약: {bundle}");
             return true;
         }
         catch (Exception ex)

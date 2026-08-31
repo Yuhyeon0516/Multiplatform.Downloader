@@ -68,10 +68,28 @@ public partial class App : Application
                 {
                     var protocolArg = Array.Find(desktop.Args ?? [], a => a.StartsWith("mpdl://", StringComparison.OrdinalIgnoreCase));
                     if (protocolArg is not null)
+                    {
                         await PipeIpcClient.TrySendAsync(IpcPipeName, protocolArg, TimeSpan.FromSeconds(2));
-                    _exiting = true;
-                    desktop.Shutdown();
-                    return;
+                    }
+                    else
+                    {
+                        // 업데이트 재실행 경합: 구 인스턴스가 종료 중일 수 있다 — 짧게 재시도해
+                        // 자리가 비면 주 인스턴스로 계속 진행한다(자동 업데이트 후 크래시/미기동 수정)
+                        for (var attempt = 0; attempt < 4 && !_instanceGuard.IsPrimaryInstance; attempt++)
+                        {
+                            _instanceGuard.Dispose();
+                            await Task.Delay(1000);
+                            _instanceGuard = new SingleInstanceGuard(SingleInstanceMutexName);
+                        }
+                    }
+                    if (!_instanceGuard.IsPrimaryInstance)
+                    {
+                        _exiting = true;
+                        // 주의: 메인 루프 시작 전 Shutdown()은 "Dispatcher shut down" 크래시 —
+                        // 루프가 돈 뒤 처리되도록 디스패처에 미룬다(실측 크래시 리포트 2건)
+                        Dispatcher.UIThread.Post(() => desktop.Shutdown());
+                        return;
+                    }
                 }
             }
             catch (Exception ex)
@@ -236,6 +254,10 @@ public partial class App : Application
             _installing = false;
             return false;
         }
+
+        // 새 인스턴스가 주 인스턴스로 뜰 수 있도록 파이프·뮤텍스를 먼저 놓는다(재실행 경합 방지)
+        TryRun(() => { _ipcServer?.Dispose(); _ipcServer = null; });
+        TryRun(() => { _instanceGuard?.Dispose(); _instanceGuard = null; });
 
         var installer = container.Resolve<MacUpdateInstaller>();
         if (!installer.InstallAndScheduleRelaunch(archivePath))
