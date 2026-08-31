@@ -1,0 +1,59 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Multiplatform_Downloader.Avalonia.Views.SplashScreenView"
+        Width="520" Height="320"
+        WindowStartupLocation="CenterScreen"
+        SystemDecorations="None"
+        CanResize="False"
+        ShowInTaskbar="False">
+
+  <Border CornerRadius="10" ClipToBounds="True" BorderThickness="1" BorderBrush="#552563EB">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#16181D" Offset="0"/>
+        <GradientStop Color="#1C2530" Offset="0.65"/>
+        <GradientStop Color="#1E3A5F" Offset="1"/>
+      </LinearGradientBrush>
+    </Border.Background>
+
+    <Grid RowDefinitions="*,Auto,26">
+
+      <!-- Row 0: 로고 + 제품명/버전 -->
+      <Grid Grid.Row="0" Margin="26,24,26,8">
+        <StackPanel VerticalAlignment="Center">
+          <Border Width="64" Height="64" CornerRadius="16" Background="#2563EB" HorizontalAlignment="Left">
+            <Viewbox Width="26" Height="26" Margin="3,0,0,0">
+              <Path Classes="wfIconFill" Data="{StaticResource IcoPlay}" Fill="White"/>
+            </Viewbox>
+          </Border>
+          <TextBlock Text="{Binding ProductName}" FontSize="23" FontWeight="Bold"
+                     Foreground="White" Margin="0,16,0,0"/>
+          <TextBlock Text="{Binding SubTitle}" FontSize="12.5"
+                     Foreground="White" Opacity="0.8" Margin="0,4,0,0"/>
+          <TextBlock Text="{Binding Version}" FontSize="10.5"
+                     Foreground="White" Opacity="0.55" Margin="0,4,0,0"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- Row 1: 미니 로딩 로그 콘솔 -->
+      <ItemsControl Grid.Row="1" ItemsSource="{Binding LogLines}"
+                    Margin="26,0,26,10" IsHitTestVisible="False">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" FontFamily="Menlo, Consolas, monospace" FontSize="10.5"
+                       Foreground="#9AA3B2" TextTrimming="CharacterEllipsis"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- Row 2: 프로그레스바 + 상태 텍스트 -->
+      <Grid Grid.Row="2">
+        <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100"
+                     BorderThickness="0" Foreground="#2563EB" Background="#CC10151C"/>
+        <TextBlock Text="{Binding StatusMessage}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="White" FontSize="11" FontWeight="Medium"/>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

@@ -10,4 +10,5 @@ public sealed record UpdateInfo(
     string ReleaseNotes,
     string AssetName,
     string DownloadUrl,
-    long AssetSize);
+    long AssetSize,
+    string? ChecksumUrl = null); // macOS: 같은 릴리스의 "<AssetName>.sha256" 자산 URL(무결성 검증용)

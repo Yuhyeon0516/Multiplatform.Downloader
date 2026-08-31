@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Multiplatform_Downloader.Avalonia.Views.AddLinksView"
+        Background="{DynamicResource WfSurfaceBrush}"
+        Foreground="{DynamicResource WfInkBrush}"
+        Title="여러 링크 한 번에 추가" Height="420" Width="580" WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <TextBlock Text="{Binding PreviewSummary}" VerticalAlignment="Center" Opacity="0.75" Margin="0,0,16,0"/>
+      <Button Theme="{StaticResource CardButton}" Command="{Binding Cancel}" Content="취소" Width="90" Height="34" Margin="0,0,8,0"/>
+      <Button Theme="{StaticResource CardButtonPrimary}" Command="{Binding Confirm}" Content="큐에 추가" Width="110" Height="34"/>
+    </StackPanel>
+
+    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" Opacity="0.7"
+               Text="한 줄에 하나씩 URL을 붙여넣으세요. 미지원·중복 URL은 자동 제외됩니다."/>
+
+    <TextBox Text="{Binding LinksText}"
+             AcceptsReturn="True" TextWrapping="NoWrap"
+             FontFamily="Menlo, Consolas, monospace" FontSize="12" Padding="8"/>
+  </DockPanel>
+</Window>

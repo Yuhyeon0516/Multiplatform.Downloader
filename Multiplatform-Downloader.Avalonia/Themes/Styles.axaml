@@ -1,0 +1,25 @@
+<!-- 전역 스타일 — 아이콘 Path 클래스(wfIcon/wfIconFill). WPF WfIcon/WfIconFill 스타일 이식. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Style Selector="Path.wfIcon">
+    <Setter Property="Stroke" Value="{Binding $parent[TemplatedControl].Foreground}"/>
+    <Setter Property="StrokeThickness" Value="1.75"/>
+    <Setter Property="StrokeLineCap" Value="Round"/>
+    <Setter Property="StrokeJoin" Value="Round"/>
+    <Setter Property="Fill" Value="Transparent"/>
+    <Setter Property="Width" Value="24"/>
+    <Setter Property="Height" Value="24"/>
+    <Setter Property="Stretch" Value="None"/>
+  </Style>
+
+  <Style Selector="Path.wfIconFill">
+    <Setter Property="Fill" Value="{Binding $parent[TemplatedControl].Foreground}"/>
+    <Setter Property="Stroke" Value="{x:Null}"/>
+    <Setter Property="StrokeThickness" Value="0"/>
+    <Setter Property="Width" Value="24"/>
+    <Setter Property="Height" Value="24"/>
+    <Setter Property="Stretch" Value="None"/>
+  </Style>
+
+</Styles>

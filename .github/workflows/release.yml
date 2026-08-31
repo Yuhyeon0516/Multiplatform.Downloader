@@ -1,0 +1,206 @@
+# 릴리스 파이프라인 — v* 태그 푸시 시 Windows 설치기 + macOS 앱 번들을 빌드해
+# 단일 GitHub Release에 업로드한다. workflow_dispatch는 드라이런(빌드만, 릴리스 생략).
+#
+# 자동 업데이트(GitHubUpdateChecker) 호환 제약 — 어기면 기존 사용자 업데이트가 끊긴다:
+#  - 태그는 vX.Y.Z (SemVer 접미사 금지), 릴리스는 draft/prerelease 아님
+#  - Windows 에셋명은 ShyshyroongDownloader_Setup_vX.Y.Z(.W).exe 정규식과 일치해야 함
+#    (.iss가 publish된 exe의 FileVersion에서 자동 생성하므로 손대지 않으면 유지됨)
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  # 번들 엔진 버전 고정(재현 가능한 빌드) — 갱신 시 여기만 수정
+  YTDLP_VERSION: "2026.08.19"
+  DENO_VERSION: "v2.9.6"
+  FFMPEG_WIN_ASSET: "ffmpeg-n8.1-latest-win64-gpl-8.1"
+
+jobs:
+  test-core:
+    name: Core 테스트 (크로스플랫폼)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - run: dotnet test tests/Multiplatform-Downloader.Core.Tests -c Release --nologo
+
+  test-windows:
+    name: WPF 테스트
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - run: dotnet test tests/Multiplatform-Downloader.Tests -c Release --nologo
+
+  windows:
+    name: Windows 설치기 빌드
+    runs-on: windows-latest
+    needs: [test-core, test-windows]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 번들 엔진 캐시 (yt-dlp/ffmpeg/ffprobe/deno)
+        id: tools-cache
+        uses: actions/cache@v4
+        with:
+          path: Multiplatform-Downloader/tools
+          key: tools-win-x64-${{ env.YTDLP_VERSION }}-${{ env.DENO_VERSION }}-${{ env.FFMPEG_WIN_ASSET }}
+
+      - name: 번들 엔진 다운로드
+        if: steps.tools-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tools = "Multiplatform-Downloader/tools"
+          New-Item -ItemType Directory -Force $tools | Out-Null
+
+          Invoke-WebRequest "https://github.com/yt-dlp/yt-dlp/releases/download/$env:YTDLP_VERSION/yt-dlp.exe" -OutFile "$tools/yt-dlp.exe"
+
+          Invoke-WebRequest "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$env:FFMPEG_WIN_ASSET.zip" -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-tmp
+          Copy-Item "ffmpeg-tmp/$env:FFMPEG_WIN_ASSET/bin/ffmpeg.exe" $tools
+          Copy-Item "ffmpeg-tmp/$env:FFMPEG_WIN_ASSET/bin/ffprobe.exe" $tools
+          Remove-Item -Recurse -Force ffmpeg.zip, ffmpeg-tmp
+
+          Invoke-WebRequest "https://github.com/denoland/deno/releases/download/$env:DENO_VERSION/deno-x86_64-pc-windows-msvc.zip" -OutFile deno.zip
+          Expand-Archive deno.zip -DestinationPath deno-tmp
+          Copy-Item "deno-tmp/deno.exe" $tools
+          Remove-Item -Recurse -Force deno.zip, deno-tmp
+
+          Get-ChildItem $tools
+
+      - name: 앱 퍼블리시 (win-x64, self-contained)
+        run: >
+          dotnet publish Multiplatform-Downloader/Multiplatform-Downloader.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:DebugType=None -p:DebugSymbols=false
+          -o Installer/publish
+
+      - name: Inno Setup 설치 + Korean.isl 확보
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          choco install innosetup --no-progress -y
+          $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
+          if (-not (Test-Path "$langDir\Korean.isl")) {
+            # 배포판에 한국어가 빠진 경우 공식 소스에서 보충
+            Invoke-WebRequest "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Korean.isl" -OutFile "$langDir\Korean.isl"
+          }
+
+      - name: 설치기 컴파일 (ISCC)
+        working-directory: Installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ShyshyroongDownloader.iss
+          Get-ChildItem Output
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: Installer/Output/*.exe
+          if-no-files-found: error
+
+  macos:
+    name: macOS 앱 번들 빌드 (${{ matrix.rid }})
+    runs-on: macos-latest
+    needs: [test-core]
+    strategy:
+      matrix:
+        include:
+          - rid: osx-arm64
+            arch: arm64
+            ffmpeg_arch: arm64
+            deno_asset: deno-aarch64-apple-darwin.zip
+          - rid: osx-x64
+            arch: x64
+            ffmpeg_arch: amd64
+            deno_asset: deno-x86_64-apple-darwin.zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 번들 엔진 캐시
+        id: tools-cache
+        uses: actions/cache@v4
+        with:
+          path: Multiplatform-Downloader.Avalonia/tools
+          key: tools-macos-${{ matrix.arch }}-${{ env.YTDLP_VERSION }}-${{ env.DENO_VERSION }}
+
+      - name: 번들 엔진 다운로드 (yt-dlp/ffmpeg/ffprobe/deno)
+        if: steps.tools-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          TOOLS=Multiplatform-Downloader.Avalonia/tools
+          mkdir -p "$TOOLS"
+          # yt-dlp_macos는 universal2(arm64+x86_64) 단일 바이너리
+          curl -fL "https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}/yt-dlp_macos" -o "$TOOLS/yt-dlp"
+          curl -fL "https://ffmpeg.martin-riedl.de/redirect/latest/macos/${{ matrix.ffmpeg_arch }}/release/ffmpeg.zip" -o /tmp/ffmpeg.zip
+          curl -fL "https://ffmpeg.martin-riedl.de/redirect/latest/macos/${{ matrix.ffmpeg_arch }}/release/ffprobe.zip" -o /tmp/ffprobe.zip
+          curl -fL "https://github.com/denoland/deno/releases/download/${DENO_VERSION}/${{ matrix.deno_asset }}" -o /tmp/deno.zip
+          unzip -o -q /tmp/ffmpeg.zip -d "$TOOLS"
+          unzip -o -q /tmp/ffprobe.zip -d "$TOOLS"
+          unzip -o -q /tmp/deno.zip -d "$TOOLS"
+          chmod +x "$TOOLS"/{yt-dlp,ffmpeg,ffprobe,deno}
+          ls -la "$TOOLS"
+
+      - name: .app 번들 + tar.gz + dmg + sha256
+        run: ./Installer/macos/make-app.sh ${{ matrix.rid }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            Installer/macos/dist/ShyshyroongDownloader-macos-${{ matrix.arch }}.tar.gz
+            Installer/macos/dist/ShyshyroongDownloader-macos-${{ matrix.arch }}.tar.gz.sha256
+            Installer/macos/dist/ShyshyroongDownloader-macos-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release 발행
+    runs-on: ubuntu-latest
+    needs: [windows, macos]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 태그와 csproj 버전 일치 검증 (버전 단일 소스 = csproj)
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          WIN_VERSION=$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' Multiplatform-Downloader/Multiplatform-Downloader.csproj)
+          MAC_VERSION=$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' Multiplatform-Downloader.Avalonia/Multiplatform-Downloader.Avalonia.csproj)
+          echo "tag=$TAG windows=$WIN_VERSION macos=$MAC_VERSION"
+          if [ "$TAG" != "$WIN_VERSION" ] || [ "$TAG" != "$MAC_VERSION" ]; then
+            echo "::error::태그(v$TAG)와 csproj <Version>(win=$WIN_VERSION, mac=$MAC_VERSION)이 일치해야 합니다. 두 csproj를 갱신한 커밋에 태그를 다세요."
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Release 생성 + 에셋 업로드
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 샤샤룽 다운로더 ${{ github.ref_name }}
+          files: dist/*
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false

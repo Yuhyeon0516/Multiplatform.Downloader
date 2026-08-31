@@ -1,0 +1,192 @@
+<!-- 공용 컨트롤 테마(FR-U1.4) — WPF 헤드 Themes/Controls.xaml의 키드 스타일을 ControlTheme로 이식.
+     트리거 → 의사 클래스 셀렉터(:pointerover/:pressed/:disabled), Tag="on" → .on 클래스. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- 카드/다이얼로그 기본 버튼 — 6px 라운드 · 서페이스 배경 · 1px 라인 보더 -->
+  <ControlTheme x:Key="CardButton" TargetType="Button">
+    <Setter Property="Background" Value="{DynamicResource WfSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource WfLineBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource WfInkBrush}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="MinWidth" Value="52"/>
+    <Setter Property="Margin" Value="4,0,0,0"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                CornerRadius="6" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfHoverBrush}"/>
+    </Style>
+    <Style Selector="^:pressed /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfPressedBrush}"/>
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+  </ControlTheme>
+
+  <!-- 주요 액션 — 액센트 채움 + 흰 글씨 -->
+  <ControlTheme x:Key="CardButtonPrimary" TargetType="Button" BasedOn="{StaticResource CardButton}">
+    <Setter Property="Background" Value="{DynamicResource WfPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource WfPrimaryBrush}"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Style Selector="^:pointerover /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfPrimaryHoverBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource WfPrimaryHoverBrush}"/>
+    </Style>
+    <Style Selector="^:pressed /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfPrimaryPressedBrush}"/>
+    </Style>
+  </ControlTheme>
+
+  <!-- 파괴적 액션 — 고스트: 붉은 텍스트·보더 -->
+  <ControlTheme x:Key="CardButtonDanger" TargetType="Button" BasedOn="{StaticResource CardButton}">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource WfDangerBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource WfDangerFgBrush}"/>
+    <Style Selector="^:pointerover /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfDangerHoverBrush}"/>
+    </Style>
+    <Style Selector="^:pressed /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfDangerPressedBrush}"/>
+    </Style>
+  </ControlTheme>
+
+  <!-- 아이콘 전용 버튼 — 30×30 · 투명 배경 · 호버 시 칩 -->
+  <ControlTheme x:Key="IconButton" TargetType="Button">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource WfLineBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource WfInkBrush}"/>
+    <Setter Property="Width" Value="30"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="Margin" Value="4,0,0,0"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfHoverBrush}"/>
+    </Style>
+    <Style Selector="^:pressed /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfPressedBrush}"/>
+    </Style>
+    <Style Selector="^:focus /template/ Border#bd">
+      <Setter Property="BorderBrush" Value="{DynamicResource WfFocusBrush}"/>
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+  </ControlTheme>
+
+  <!-- 좌측 레일 버튼 — 44×44 · 10px 라운드 -->
+  <ControlTheme x:Key="RailButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+    <Setter Property="Width" Value="44"/>
+    <Setter Property="Height" Value="44"/>
+    <Setter Property="Margin" Value="0,2"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource WfInk2Brush}"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="10">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- 상태 필터 칩 — 알약형. .on 클래스면 액센트 채움 -->
+  <ControlTheme x:Key="ChipButton" TargetType="Button">
+    <Setter Property="Background" Value="{DynamicResource WfChipBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource WfInk2Brush}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Padding" Value="12,5"/>
+    <Setter Property="Margin" Value="0,0,6,0"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                CornerRadius="14" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfHoverBrush}"/>
+    </Style>
+    <Style Selector="^.on /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfPrimaryBrush}"/>
+    </Style>
+    <Style Selector="^.on">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+  </ControlTheme>
+
+  <!-- 오버플로(⋯) 버튼 — IconButton 동형(Flyout 호스트) -->
+  <ControlTheme x:Key="IconFlyoutButton" TargetType="Button" BasedOn="{StaticResource IconButton}"/>
+
+  <!-- 오버플로 메뉴 항목 — 좌측 정렬 텍스트 버튼, 비활성은 흐리게 -->
+  <ControlTheme x:Key="MenuActionButton" TargetType="Button">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource WfInkBrush}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="5"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="Center"/>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#bd">
+      <Setter Property="Background" Value="{DynamicResource WfHoverBrush}"/>
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.38"/>
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="MenuActionButtonDanger" TargetType="Button" BasedOn="{StaticResource MenuActionButton}">
+    <Setter Property="Foreground" Value="{DynamicResource WfDangerFgBrush}"/>
+  </ControlTheme>
+
+</ResourceDictionary>

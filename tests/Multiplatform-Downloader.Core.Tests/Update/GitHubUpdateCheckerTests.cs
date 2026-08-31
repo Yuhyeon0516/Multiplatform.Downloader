@@ -6,7 +6,12 @@ namespace Multiplatform_Downloader.Tests.Update;
 
 public class GitHubUpdateCheckerTests
 {
-    private const string Body200 = """
+    // 자산 선택은 OS별로 다르다(Windows: Setup exe / macOS: tar.gz + .sha256 사이드카) — 실행 OS에 맞는 픽스처 생성
+    private static string ExpectedAssetName => OperatingSystem.IsMacOS()
+        ? GitHubUpdateChecker.MacAssetName
+        : "ShyshyroongDownloader_Setup_v2.13.0.0.exe";
+
+    private static readonly string Body200 = $$"""
     {
       "tag_name": "v2.13.0",
       "draft": false,
@@ -14,7 +19,8 @@ public class GitHubUpdateCheckerTests
       "body": "릴리스 노트",
       "assets": [
         { "name": "Source.zip", "browser_download_url": "https://x/s.zip", "size": 10 },
-        { "name": "ShyshyroongDownloader_Setup_v2.13.0.0.exe", "browser_download_url": "https://github.com/ghlee0786/Multiplatform.Downloader/releases/download/v2.13.0/ShyshyroongDownloader_Setup_v2.13.0.0.exe", "size": 176781304 }
+        { "name": "{{ExpectedAssetName}}", "browser_download_url": "https://github.com/x/releases/download/v2.13.0/{{ExpectedAssetName}}", "size": 176781304 },
+        { "name": "{{ExpectedAssetName}}.sha256", "browser_download_url": "https://github.com/x/releases/download/v2.13.0/{{ExpectedAssetName}}.sha256", "size": 100 }
       ]
     }
     """;
@@ -33,7 +39,7 @@ public class GitHubUpdateCheckerTests
         var info = await sut.FetchLatestAsync();
         Assert.NotNull(info);
         Assert.Equal("v2.13.0", info!.TagName);
-        Assert.Equal("ShyshyroongDownloader_Setup_v2.13.0.0.exe", info.AssetName); // Source.zip 아님
+        Assert.Equal(ExpectedAssetName, info.AssetName); // Source.zip 아님
         Assert.Equal(176781304, info.AssetSize);
     }
 

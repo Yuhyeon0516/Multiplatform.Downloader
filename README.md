@@ -55,6 +55,30 @@ dotnet build Multiplatform-Downloader/Multiplatform-Downloader.csproj -c Release
 
 Chrome 확장 설치는 [`docs/chrome-extension-guide.md`](docs/chrome-extension-guide.md) 참고.
 
+### macOS 설치
+
+**터미널 한 줄 설치(권장)** — Gatekeeper 경고 없이 설치·실행된다:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Yuhyeon0516/Multiplatform.Downloader/main/install.sh | bash
+```
+
+Apple Silicon(arm64)·Intel(x64)을 자동 감지해 `/Applications`에 설치한다.
+
+**.dmg 설치(보조)**: 릴리스의 `ShyshyroongDownloader-macos-<아키텍처>.dmg`를 받아 앱을 Applications로 끌어놓는다.
+현재 무서명(ad-hoc) 배포라 **브라우저로 내려받은 경우** 첫 실행 시
+시스템 설정 → 개인정보 보호 및 보안 → **"그래도 열기"**를 한 번 눌러야 한다.
+
+```bash
+# macOS 소스 빌드/실행 (Avalonia 헤드)
+dotnet run --project Multiplatform-Downloader.Avalonia
+# 배포 번들 빌드 (.app + .tar.gz + .dmg)
+./Installer/macos/make-app.sh osx-arm64
+```
+
+> macOS용 번들 엔진은 `Multiplatform-Downloader.Avalonia/tools/`에 확장자 없는
+> `yt-dlp`/`ffmpeg`/`ffprobe`/`deno`를 배치한다(CI가 자동 수행).
+
 ---
 
 ## 사용법

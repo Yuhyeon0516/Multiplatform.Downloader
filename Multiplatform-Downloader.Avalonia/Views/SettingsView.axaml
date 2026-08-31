@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Multiplatform_Downloader.Avalonia.Views.SettingsView"
+        Background="{DynamicResource WfSurfaceBrush}"
+        Foreground="{DynamicResource WfInkBrush}"
+        Title="설정" Height="600" Width="520" WindowStartupLocation="CenterOwner"
+        CanResize="False">
+  <Window.Styles>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Margin" Value="0,0,0,4"/>
+    </Style>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Opacity" Value="0.7"/>
+      <Setter Property="Margin" Value="0,14,0,8"/>
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="18">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+      <Button Theme="{StaticResource CardButton}" Command="{Binding Cancel}" Content="취소" Width="90" Height="34" Margin="0,0,8,0"/>
+      <Button Theme="{StaticResource CardButtonPrimary}" Command="{Binding Save}" Content="저장" Width="90" Height="34"/>
+    </StackPanel>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+        <TextBlock Text="일반" Classes="section" Margin="0,0,0,8"/>
+
+        <TextBlock Text="다운로드 폴더" Classes="label"/>
+        <DockPanel Margin="0,0,0,10">
+          <Button DockPanel.Dock="Right" Theme="{StaticResource CardButton}" Command="{Binding BrowseFolder}"
+                  Content="찾아보기…" Width="90" Margin="8,0,0,0"/>
+          <TextBox Text="{Binding DownloadFolder}" Padding="6,4" VerticalContentAlignment="Center"/>
+        </DockPanel>
+
+        <TextBlock Text="동시 다운로드 수 (권장 3~5)" Classes="label"/>
+        <ComboBox ItemsSource="{Binding ConcurrentOptions}" SelectedItem="{Binding MaxConcurrent}" Width="90" HorizontalAlignment="Left" Margin="0,0,0,10"/>
+
+        <TextBlock Text="큐 최대 보유" Classes="label"/>
+        <TextBox Text="{Binding MaxQueueItems}" Width="90" HorizontalAlignment="Left" Padding="6,4" Margin="0,0,0,10"/>
+
+        <TextBlock Text="기본 품질" Classes="label"/>
+        <ComboBox ItemsSource="{Binding QualityOptions}" SelectedItem="{Binding DefaultQuality}" Width="160" HorizontalAlignment="Left" Margin="0,0,0,10"/>
+
+        <TextBlock Text="등록 실패 재시도 횟수 (네트워크 오류 시 · 썸네일 포함)" Classes="label"/>
+        <ComboBox ItemsSource="{Binding RetryOptions}" SelectedItem="{Binding AnalysisRetryCount}" Width="90" HorizontalAlignment="Left"/>
+
+        <TextBlock Text="macOS 연동" Classes="section"/>
+        <CheckBox Content="로그인 시 자동 실행" IsChecked="{Binding LaunchOnStartup}" Margin="0,4"/>
+        <CheckBox Content="메뉴바로 최소화된 상태로 시작" IsChecked="{Binding StartMinimized}" Margin="0,4"/>
+        <CheckBox Content="창 닫기 시 메뉴바로 최소화 (끄면 창 닫기 = 완전 종료)" IsChecked="{Binding CloseToTray}" Margin="0,4"/>
+        <CheckBox Content="완료/실패 알림" IsChecked="{Binding NotifyOnComplete}" Margin="0,4"/>
+        <CheckBox Content="자동 다운로드 (등록하면 분석 후 바로 받기)" IsChecked="{Binding AutoStartDownload}" Margin="0,4"/>
+        <CheckBox Content="시작 시 업데이트 자동 확인" IsChecked="{Binding AutoUpdateCheck}" Margin="0,4"/>
+
+        <TextBlock Text="고급" Classes="section"/>
+        <TextBlock Text="로그인 쿠키 (Instagram/샤오홍슈 로그인 콘텐츠용)" Classes="label"/>
+        <ComboBox ItemsSource="{Binding CookieOptions}" SelectedItem="{Binding CookieSource}" Width="220" HorizontalAlignment="Left"/>
+        <DockPanel Margin="0,8,0,0" IsVisible="{Binding IsCookieFile}">
+          <Button DockPanel.Dock="Right" Theme="{StaticResource CardButton}" Command="{Binding BrowseCookieFile}"
+                  Content="찾아보기…" Width="90" Margin="8,0,0,0"/>
+          <TextBox Text="{Binding CookieFilePath}" Padding="6,4" VerticalContentAlignment="Center"/>
+        </DockPanel>
+        <TextBlock Text="{Binding CookieHint}" TextWrapping="Wrap" FontSize="11.5" Opacity="0.9" Margin="0,8,0,0"
+                   Foreground="{DynamicResource WfWarnBrush}"
+                   IsVisible="{Binding IsBrowserCookie}"/>
+
+        <TextBlock Text="테마" Classes="label" Margin="0,12,0,4"/>
+        <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding Theme}" Width="160" HorizontalAlignment="Left"/>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

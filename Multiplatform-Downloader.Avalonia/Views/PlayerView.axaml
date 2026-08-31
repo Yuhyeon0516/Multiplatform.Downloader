@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctrl="clr-namespace:Multiplatform_Downloader.Avalonia.Controls"
+        x:Class="Multiplatform_Downloader.Avalonia.Views.PlayerView"
+        Background="{DynamicResource WfBgBrush}"
+        Foreground="{DynamicResource WfInkBrush}"
+        Title="{Binding WindowTitle}" Height="640" Width="960"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel>
+    <!-- 상단 바: 이전/다음 · 제목 · 폴더/기본 플레이어 -->
+    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,0,0,1" Padding="10,8">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button Theme="{StaticResource CardButton}" Command="{Binding OpenFolder}" Content="폴더" Height="30"/>
+          <Button Theme="{StaticResource CardButton}" Command="{Binding OpenInDefaultPlayer}" Content="기본 플레이어" Height="30"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <Button Theme="{StaticResource IconButton}" Command="{Binding PrevItem}" ToolTip.Tip="이전">
+            <Viewbox Width="14" Height="14">
+              <Path Classes="wfIcon" Data="{StaticResource IcoChevLeft}"/>
+            </Viewbox>
+          </Button>
+          <Button Theme="{StaticResource IconButton}" Command="{Binding NextItem}" ToolTip.Tip="다음">
+            <Viewbox Width="14" Height="14">
+              <Path Classes="wfIcon" Data="{StaticResource IcoChevRight}"/>
+            </Viewbox>
+          </Button>
+          <TextBlock Text="{Binding CurrentTitle}" FontWeight="SemiBold" FontSize="13"
+                     VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="520"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- 하단 정보 바 -->
+    <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,1,0,0" Padding="10,5">
+      <StackPanel>
+        <TextBlock Text="{Binding StatusText}" FontSize="11.5" Foreground="{DynamicResource WfWarnBrush}"
+                   TextWrapping="Wrap" IsVisible="{Binding HasStatus}"/>
+        <TextBlock Text="{Binding MetaInfo}" FontSize="11" Foreground="{DynamicResource WfInk2Brush}"
+                   TextTrimming="CharacterEllipsis"/>
+      </StackPanel>
+    </Border>
+
+    <ctrl:MacWebView x:Name="Player"/>
+  </DockPanel>
+</Window>

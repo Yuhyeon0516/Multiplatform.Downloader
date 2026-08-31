@@ -1,5 +1,7 @@
 <Solution>
+  <Project Path="../Multiplatform-Downloader.Avalonia/Multiplatform-Downloader.Avalonia.csproj" />
   <Project Path="../Multiplatform-Downloader.Core/Multiplatform-Downloader.Core.csproj" />
+  <Project Path="../tests/Multiplatform-Downloader.Core.Tests/Multiplatform-Downloader.Core.Tests.csproj" />
   <Project Path="../tests/Multiplatform-Downloader.Tests/Multiplatform-Downloader.Tests.csproj" />
   <Project Path="Multiplatform-Downloader.csproj" />
 </Solution>

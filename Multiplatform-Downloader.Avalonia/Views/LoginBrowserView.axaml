@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctrl="clr-namespace:Multiplatform_Downloader.Avalonia.Controls"
+        x:Class="Multiplatform_Downloader.Avalonia.Views.LoginBrowserView"
+        Background="{DynamicResource WfSurfaceBrush}"
+        Foreground="{DynamicResource WfInkBrush}"
+        Title="로그인 / 확인 — 샤샤룽 다운로더" Height="720" Width="980"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button Theme="{StaticResource CardButton}" Command="{Binding Cancel}" Content="취소"
+                  Height="32" MinWidth="80" Margin="0,0,8,0"/>
+          <Button Theme="{StaticResource CardButtonPrimary}" Command="{Binding Complete}" Content="완료"
+                  Height="32" MinWidth="96"/>
+        </StackPanel>
+        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" FontSize="12.5"
+                   TextWrapping="Wrap" Opacity="0.85"/>
+      </DockPanel>
+    </Border>
+    <ctrl:MacWebView x:Name="Browser"/>
+  </DockPanel>
+</Window>

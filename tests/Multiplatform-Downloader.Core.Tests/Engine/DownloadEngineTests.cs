@@ -55,15 +55,17 @@ public class DownloadEngineTests
     [Fact]
     public async Task should_return_output_path_when_success()
     {
+        // 엔진은 Path.IsPathRooted로 출력 경로를 판별하므로 실행 OS 기준의 루트 경로를 써야 한다
+        var rootedPath = OperatingSystem.IsWindows() ? @"D:\Videos\video.mp4" : "/Videos/video.mp4";
         var runner = new LineEmittingRunner(
-            ["[download] 100% of 10.00MiB in 00:05", @"D:\Videos\video.mp4"],
+            ["[download] 100% of 10.00MiB in 00:05", rootedPath],
             exitCode: 0);
         var engine = new DownloadEngine(runner, "yt-dlp.exe");
 
         var result = await engine.DownloadAsync(Request());
 
         Assert.True(result.Success);
-        Assert.Equal(@"D:\Videos\video.mp4", result.OutputFilePath);
+        Assert.Equal(rootedPath, result.OutputFilePath);
     }
 
     [Fact]

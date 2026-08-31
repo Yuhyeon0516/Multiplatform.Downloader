@@ -35,13 +35,22 @@ public enum UpdateCheckFailure
 /// </summary>
 public sealed partial class GitHubUpdateChecker : IUpdateChecker, IDisposable
 {
-    private const string LatestUrl = "https://api.github.com/repos/ghlee0786/Multiplatform.Downloader/releases/latest";
+    private const string LatestUrl = "https://api.github.com/repos/Yuhyeon0516/Multiplatform.Downloader/releases/latest";
     private const long MaxResponseBytes = 1024 * 1024; // 1MB — 정상 latest JSON은 수 KB (FR-U2.4)
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
 
     // 자산명 앵커드 검증: ShyshyroongDownloader_Setup_v2.13.0.0.exe 형태만 허용 (FR-U2.2)
     [GeneratedRegex(@"^ShyshyroongDownloader_Setup_v\d{1,9}\.\d{1,9}\.\d{1,9}(?:\.\d{1,9})?\.exe$", RegexOptions.CultureInvariant)]
     private static partial Regex AssetPattern();
+
+    /// <summary>macOS 자산명 — CI가 아키텍처별 고정 이름으로 게시(버전은 태그가 담당).
+    /// 무결성은 같은 릴리스의 "&lt;자산명&gt;.sha256" 파일로 검증한다(PE FileVersion 검증 불가 대체).</summary>
+    internal static string MacAssetName =>
+        $"ShyshyroongDownloader-macos-{(System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "x64")}.tar.gz";
+
+    private static bool IsAssetMatch(string name) => OperatingSystem.IsMacOS()
+        ? string.Equals(name, MacAssetName, StringComparison.Ordinal)
+        : AssetPattern().IsMatch(name);
 
     private readonly HttpClient _http;
     private readonly bool _ownsHandler;
@@ -216,13 +225,26 @@ public sealed partial class GitHubUpdateChecker : IUpdateChecker, IDisposable
             foreach (var asset in assets.EnumerateArray())
             {
                 var name = asset.TryGetProperty("name", out var n) ? n.GetString() : null;
-                if (string.IsNullOrEmpty(name) || !AssetPattern().IsMatch(name))
+                if (string.IsNullOrEmpty(name) || !IsAssetMatch(name))
                     continue;
                 var url = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
                 var size = asset.TryGetProperty("size", out var s) && s.TryGetInt64(out var sz) ? sz : 0;
                 if (string.IsNullOrEmpty(url) || size <= 0)
                     continue;
-                return new UpdateInfo(tag!, version, notes, name, url, size);
+
+                // macOS: 무결성 검증용 sha256 사이드카 필수 — 없으면 자산 없음으로 처리(다운로드 후 검증 불가)
+                string? checksumUrl = null;
+                if (OperatingSystem.IsMacOS())
+                {
+                    checksumUrl = FindChecksumUrl(assets, name);
+                    if (checksumUrl is null)
+                    {
+                        _logger.Warning("Update", $"{name}.sha256 자산 없음 — 스킵");
+                        LastFailure = UpdateCheckFailure.NoAsset;
+                        return null;
+                    }
+                }
+                return new UpdateInfo(tag!, version, notes, name, url, size, checksumUrl);
             }
 
             _logger.Warning("Update", "자산명 패턴 매칭 실패");
@@ -236,6 +258,21 @@ public sealed partial class GitHubUpdateChecker : IUpdateChecker, IDisposable
             LastFailure = UpdateCheckFailure.MalformedResponse;
             return null;
         }
+    }
+
+    private static string? FindChecksumUrl(JsonElement assets, string assetName)
+    {
+        var expected = assetName + ".sha256";
+        foreach (var asset in assets.EnumerateArray())
+        {
+            var name = asset.TryGetProperty("name", out var n) ? n.GetString() : null;
+            if (!string.Equals(name, expected, StringComparison.Ordinal))
+                continue;
+            var url = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() : null;
+            if (!string.IsNullOrEmpty(url))
+                return url;
+        }
+        return null;
     }
 
     private static bool TryBool(JsonElement root, string prop)

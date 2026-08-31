@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Multiplatform-Downloader.Tests" />
+    <InternalsVisibleTo Include="Multiplatform-Downloader.Core.Tests" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,66 @@
+<!-- 와이어프레임 팔레트 — WPF 헤드의 Wireframe{Light,Dark}.xaml을 ThemeVariant 사전으로 통합.
+     키·색상은 원본과 동일(Wf* 토큰). RequestedThemeVariant 전환 시 DynamicResource가 즉시 반영된다. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="WfBgBrush" Color="#F4F5F7"/>
+      <SolidColorBrush x:Key="WfSurfaceBrush" Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="WfInkBrush" Color="#1C1E21"/>
+      <SolidColorBrush x:Key="WfInk2Brush" Color="#5F6672"/>
+      <SolidColorBrush x:Key="WfLineBrush" Color="#D9DDE3"/>
+      <SolidColorBrush x:Key="WfAccentBrush" Color="#2563EB"/>
+      <SolidColorBrush x:Key="WfAccentSoftBrush" Color="#DBEAFE"/>
+      <SolidColorBrush x:Key="WfChipBrush" Color="#E9ECF1"/>
+      <SolidColorBrush x:Key="WfHoverBrush" Color="#EBEEF3"/>
+      <SolidColorBrush x:Key="WfPressedBrush" Color="#DFE4EB"/>
+      <SolidColorBrush x:Key="WfPrimaryBrush" Color="#2563EB"/>
+      <SolidColorBrush x:Key="WfPrimaryHoverBrush" Color="#3B82F6"/>
+      <SolidColorBrush x:Key="WfPrimaryPressedBrush" Color="#1D4ED8"/>
+      <SolidColorBrush x:Key="WfDangerFgBrush" Color="#DC2626"/>
+      <SolidColorBrush x:Key="WfDangerBorderBrush" Color="#66DC2626"/>
+      <SolidColorBrush x:Key="WfDangerHoverBrush" Color="#14DC2626"/>
+      <SolidColorBrush x:Key="WfDangerPressedBrush" Color="#26DC2626"/>
+      <SolidColorBrush x:Key="WfOkBrush" Color="#16A34A"/>
+      <SolidColorBrush x:Key="WfWarnBrush" Color="#B45309"/>
+      <SolidColorBrush x:Key="WfErrBrush" Color="#DC2626"/>
+      <SolidColorBrush x:Key="WfSurface2Brush" Color="#EEF1F5"/>
+      <SolidColorBrush x:Key="WfLine2Brush" Color="#C3CAD4"/>
+      <SolidColorBrush x:Key="WfOkSoftBrush" Color="#DCFCE7"/>
+      <SolidColorBrush x:Key="WfWarnSoftBrush" Color="#FEF3C7"/>
+      <SolidColorBrush x:Key="WfErrSoftBrush" Color="#FEE2E2"/>
+      <SolidColorBrush x:Key="WfFocusBrush" Color="#2563EB"/>
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="WfBgBrush" Color="#16181D"/>
+      <SolidColorBrush x:Key="WfSurfaceBrush" Color="#1F232B"/>
+      <SolidColorBrush x:Key="WfInkBrush" Color="#E8EAEE"/>
+      <SolidColorBrush x:Key="WfInk2Brush" Color="#9AA3B2"/>
+      <SolidColorBrush x:Key="WfLineBrush" Color="#343A46"/>
+      <SolidColorBrush x:Key="WfAccentBrush" Color="#60A5FA"/>
+      <SolidColorBrush x:Key="WfAccentSoftBrush" Color="#1E3A5F"/>
+      <SolidColorBrush x:Key="WfChipBrush" Color="#262C36"/>
+      <SolidColorBrush x:Key="WfHoverBrush" Color="#2A313C"/>
+      <SolidColorBrush x:Key="WfPressedBrush" Color="#333B48"/>
+      <SolidColorBrush x:Key="WfPrimaryBrush" Color="#2563EB"/>
+      <SolidColorBrush x:Key="WfPrimaryHoverBrush" Color="#3B82F6"/>
+      <SolidColorBrush x:Key="WfPrimaryPressedBrush" Color="#1D4ED8"/>
+      <SolidColorBrush x:Key="WfDangerFgBrush" Color="#F87171"/>
+      <SolidColorBrush x:Key="WfDangerBorderBrush" Color="#66DC2626"/>
+      <SolidColorBrush x:Key="WfDangerHoverBrush" Color="#26DC2626"/>
+      <SolidColorBrush x:Key="WfDangerPressedBrush" Color="#40DC2626"/>
+      <SolidColorBrush x:Key="WfOkBrush" Color="#16A34A"/>
+      <SolidColorBrush x:Key="WfWarnBrush" Color="#E0A030"/>
+      <SolidColorBrush x:Key="WfErrBrush" Color="#DC2626"/>
+      <SolidColorBrush x:Key="WfSurface2Brush" Color="#262C36"/>
+      <SolidColorBrush x:Key="WfLine2Brush" Color="#454D5C"/>
+      <SolidColorBrush x:Key="WfOkSoftBrush" Color="#12301F"/>
+      <SolidColorBrush x:Key="WfWarnSoftBrush" Color="#3A2E14"/>
+      <SolidColorBrush x:Key="WfErrSoftBrush" Color="#3A1B1B"/>
+      <SolidColorBrush x:Key="WfFocusBrush" Color="#60A5FA"/>
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

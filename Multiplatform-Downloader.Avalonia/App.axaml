@@ -1,0 +1,22 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Multiplatform_Downloader.Avalonia.App"
+             Name="샤샤룽 다운로더"
+             RequestedThemeVariant="Default">
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Multiplatform-Downloader.Avalonia/Themes/Styles.axaml"/>
+  </Application.Styles>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://Multiplatform-Downloader.Avalonia/Themes/Tokens.axaml"/>
+        <ResourceInclude Source="avares://Multiplatform-Downloader.Avalonia/Themes/Icons.axaml"/>
+        <ResourceInclude Source="avares://Multiplatform-Downloader.Avalonia/Themes/ControlThemes.axaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+</Application>

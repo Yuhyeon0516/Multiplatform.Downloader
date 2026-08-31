@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Multiplatform_Downloader.Avalonia.Views.UpdateView"
+        Background="{DynamicResource WfBgBrush}"
+        Foreground="{DynamicResource WfInkBrush}"
+        Title="업데이트"
+        Width="460" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+
+  <Border Background="{DynamicResource WfSurfaceBrush}" Margin="14" CornerRadius="10"
+          BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="1" Padding="20,18">
+    <StackPanel>
+      <DockPanel>
+        <Viewbox Width="22" Height="22" Margin="0,2,10,0" VerticalAlignment="Top">
+          <Path Classes="wfIcon" Data="{StaticResource IcoDownload}"
+                Stroke="{DynamicResource WfAccentBrush}"/>
+        </Viewbox>
+        <StackPanel>
+          <TextBlock FontSize="15" FontWeight="SemiBold">
+            <Run Text="새 버전 "/><Run Text="{Binding NewVersion, Mode=OneWay}"/><Run Text=" 사용 가능"/>
+          </TextBlock>
+          <TextBlock Text="{Binding StatusText}" FontSize="12.5" Margin="0,6,0,0"
+                     TextWrapping="Wrap" Opacity="0.85" LineHeight="18"/>
+        </StackPanel>
+      </DockPanel>
+
+      <!-- 릴리스 노트(FR-U4.2) -->
+      <Border Margin="0,14,0,0" CornerRadius="6" Background="{DynamicResource WfBgBrush}"
+              BorderBrush="{DynamicResource WfLineBrush}" BorderThickness="1" Padding="12,10"
+              IsVisible="{Binding ShowPromptButtons}">
+        <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+          <TextBlock Text="{Binding ReleaseNotes}" FontSize="12" TextWrapping="Wrap"
+                     Opacity="0.9" LineHeight="18" FontFamily="Menlo, Consolas, monospace"/>
+        </ScrollViewer>
+      </Border>
+
+      <!-- 다운로드 진행 -->
+      <StackPanel Margin="0,14,0,0" IsVisible="{Binding IsDownloading}">
+        <ProgressBar Height="8" Minimum="0" Maximum="100" Value="{Binding Progress, Mode=OneWay}"
+                     Foreground="{DynamicResource WfAccentBrush}"
+                     Background="{DynamicResource WfLineBrush}" BorderThickness="0"/>
+      </StackPanel>
+
+      <!-- 버튼 -->
+      <Grid Margin="0,18,0,0">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                    IsVisible="{Binding ShowPromptButtons}">
+          <Button Theme="{StaticResource CardButton}" Command="{Binding Skip}" Content="이 버전 건너뛰기"
+                  Height="34" Padding="14,0" Margin="0,0,8,0" Opacity="0.75"/>
+          <Button Theme="{StaticResource CardButton}" Command="{Binding Later}" Content="나중에"
+                  Height="34" Padding="18,0" MinWidth="80" Margin="0,0,8,0" IsCancel="True"/>
+          <Button Theme="{StaticResource CardButtonPrimary}" Command="{Binding InstallNow}" Content="지금 설치"
+                  Height="34" Padding="20,0" MinWidth="96" IsDefault="True"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                    IsVisible="{Binding IsDownloading}">
+          <Button Theme="{StaticResource CardButton}" Command="{Binding CancelDownload}" Content="취소"
+                  Height="34" Padding="18,0" MinWidth="80"/>
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </Border>
+</Window>

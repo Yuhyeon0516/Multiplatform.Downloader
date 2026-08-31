@@ -102,8 +102,9 @@ public class ShortUrlResolverTests
     {
         using var sut = new ShortUrlResolver(new FakeHttpHandler(new()));
 
+        // "/relative/path"는 Unix에서 절대 file:// URI로 파싱되므로 모든 OS에서 상대인 입력을 쓴다
         await Assert.ThrowsAsync<ArgumentException>(
-            () => sut.ResolveAsync("/relative/path"));
+            () => sut.ResolveAsync("relative/path"));
     }
 
     /// <summary>URL별 (상태코드, Location) 응답을 반환하는 테스트 핸들러. 미등록 URL은 200.</summary>

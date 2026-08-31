@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>샤샤룽 다운로더</string>
+  <key>CFBundleDisplayName</key>
+  <string>샤샤룽 다운로더</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.shyshyroong.downloader</string>
+  <key>CFBundleExecutable</key>
+  <string>Multiplatform-Downloader.Avalonia</string>
+  <key>CFBundleIconFile</key>
+  <string>app.icns</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>__VERSION__</string>
+  <key>CFBundleVersion</key>
+  <string>__VERSION__</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>NSHumanReadableCopyright</key>
+  <string>샤샤룽컴퍼니 (Shyshyroong Company)</string>
+  <!-- mpdl:// 프로토콜 — Windows의 레지스트리 등록(ProtocolRegistrar)을 정적 선언으로 대체 -->
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>Shyshyroong Downloader Protocol</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>mpdl</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

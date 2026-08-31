@@ -33,7 +33,11 @@ TestResults/
 
 # 번들 엔진 바이너리 (405MB, 배포시 별도 조달)
 Multiplatform-Downloader/tools/
+Multiplatform-Downloader.Avalonia/tools/
 # Inno Setup 설치기 산출물
 Installer/publish/
 Installer/Output/
+# macOS 패키징 산출물
+Installer/macos/publish/
+Installer/macos/dist/
 .playwright-mcp/

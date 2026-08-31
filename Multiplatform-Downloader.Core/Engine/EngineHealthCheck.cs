@@ -9,13 +9,14 @@ public sealed record EngineHealthReport(bool AllPresent, IReadOnlyList<string> M
 /// </summary>
 public sealed class EngineHealthCheck
 {
-    private static readonly string[] RequiredBinaries =
-    [
-        "yt-dlp.exe",
-        "ffmpeg.exe",
-        "ffprobe.exe",
-        "deno.exe",
-    ];
+    // Windows 번들은 .exe, macOS/Linux 번들은 확장자 없는 동일 이름을 요구한다
+    private static readonly string[] RequiredBinaries = BuildRequiredBinaries();
+
+    private static string[] BuildRequiredBinaries()
+    {
+        var suffix = OperatingSystem.IsWindows() ? ".exe" : string.Empty;
+        return ["yt-dlp" + suffix, "ffmpeg" + suffix, "ffprobe" + suffix, "deno" + suffix];
+    }
 
     private readonly string _toolsDirectory;
 
