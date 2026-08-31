@@ -69,7 +69,9 @@ public sealed class MacUpdateInstaller : IUpdatePackageProvider, IDisposable
         {
             if (!VersionComparer.IsNewer(info.Version, currentVersion))
                 return UpdateDownloadResult.Fail("이미 최신 버전입니다.");
-            if (!IsAllowedUrl(info.DownloadUrl) || info.ChecksumUrl is null || !IsAllowedUrl(info.ChecksumUrl))
+            if (info.ChecksumUrl is null)
+                return UpdateDownloadResult.Fail("체크섬 정보가 없습니다 — 잠시 후 [업데이트 확인]을 다시 눌러 주세요.");
+            if (!IsAllowedUrl(info.DownloadUrl) || !IsAllowedUrl(info.ChecksumUrl))
                 return UpdateDownloadResult.Fail("허용되지 않은 다운로드 주소입니다.");
 
             Directory.CreateDirectory(UpdatesDir);

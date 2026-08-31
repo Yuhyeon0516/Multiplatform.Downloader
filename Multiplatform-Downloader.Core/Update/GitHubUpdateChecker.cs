@@ -106,10 +106,21 @@ public sealed partial class GitHubUpdateChecker : IUpdateChecker, IDisposable
 
             if (response.StatusCode == HttpStatusCode.NotModified)
             {
-                _stateStore.Save(state);
-                _logger.Info("Update", "304 — 변경 없음(캐시 재사용)");
                 // B1: 캐시된 파싱 결과를 반환해야 상위 계층의 재안내(24h)·스킵 판정이 계속 동작한다.
-                return state.ToCachedInfo();
+                var cached = state.ToCachedInfo();
+                if (cached is null && !string.IsNullOrEmpty(state.ETag))
+                {
+                    // 캐시가 무효(구버전 스키마 — 예: macOS 체크섬 URL 부재)면 ETag를 버려
+                    // 다음 확인에서 200 재파싱으로 자가 복구되게 한다.
+                    state.ETag = null;
+                    _logger.Info("Update", "304 — 캐시 무효(스키마 구버전), 다음 확인에서 재조회");
+                }
+                else
+                {
+                    _logger.Info("Update", "304 — 변경 없음(캐시 재사용)");
+                }
+                _stateStore.Save(state);
+                return cached;
             }
 
             if (response.StatusCode == HttpStatusCode.Forbidden)

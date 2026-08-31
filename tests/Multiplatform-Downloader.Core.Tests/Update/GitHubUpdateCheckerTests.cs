@@ -134,6 +134,9 @@ public class GitHubUpdateCheckerTests
         var info = await sut.FetchLatestAsync();
         Assert.NotNull(info);
         Assert.Equal("v2.13.0", info!.TagName);
+        // macOS는 SHA256 검증 필수 — 캐시 왕복 후에도 체크섬 URL이 보존돼야 설치가 가능하다
+        if (OperatingSystem.IsMacOS())
+            Assert.NotNull(info.ChecksumUrl);
     }
 
     [Fact] // M3 — Retry-After 헤더로 통지되는 secondary rate limit 백오프

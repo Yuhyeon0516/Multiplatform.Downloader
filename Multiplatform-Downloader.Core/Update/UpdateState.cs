@@ -24,8 +24,10 @@ public sealed class UpdateState
     public string? CachedAssetName { get; set; }
     public string? CachedDownloadUrl { get; set; }
     public long CachedAssetSize { get; set; }
+    public string? CachedChecksumUrl { get; set; }
 
-    /// <summary>캐시된 릴리스 정보를 <see cref="UpdateInfo"/>로 복원한다(304 경로). 불완전하면 null.</summary>
+    /// <summary>캐시된 릴리스 정보를 <see cref="UpdateInfo"/>로 복원한다(304 경로). 불완전하면 null.
+    /// macOS는 SHA256 검증이 필수라 체크섬 URL이 없는 캐시(구버전 스키마)는 무효로 본다.</summary>
     public UpdateInfo? ToCachedInfo()
     {
         if (string.IsNullOrEmpty(CachedTag)
@@ -34,7 +36,9 @@ public sealed class UpdateState
             || CachedAssetSize <= 0
             || !VersionComparer.TryParseTag(CachedTag, out var version))
             return null;
-        return new UpdateInfo(CachedTag, version, CachedNotes ?? string.Empty, CachedAssetName, CachedDownloadUrl, CachedAssetSize);
+        if (OperatingSystem.IsMacOS() && string.IsNullOrEmpty(CachedChecksumUrl))
+            return null;
+        return new UpdateInfo(CachedTag, version, CachedNotes ?? string.Empty, CachedAssetName, CachedDownloadUrl, CachedAssetSize, CachedChecksumUrl);
     }
 
     /// <summary>성공 파싱 결과를 캐시에 저장한다.</summary>
@@ -45,6 +49,7 @@ public sealed class UpdateState
         CachedAssetName = info.AssetName;
         CachedDownloadUrl = info.DownloadUrl;
         CachedAssetSize = info.AssetSize;
+        CachedChecksumUrl = info.ChecksumUrl;
     }
 }
 
