@@ -38,8 +38,12 @@ internal static class ThemeService
     [DllImport("user32.dll")]
     private static extern bool RedrawWindow(IntPtr hWnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
     // RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_ALLCHILDREN
     private const uint RedrawFrameNow = 0x0001 | 0x0400 | 0x0100 | 0x0080;
+    private const uint WmNcActivate = 0x0086;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct WtaOptions
@@ -113,9 +117,16 @@ internal static class ThemeService
             }
 
             _ = SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0, SwpFrameRefresh);
-            // Win10: 첫 페인트 이후 ImmersiveDarkMode 변경(테마 토글)은 rc=0이어도 비적용 — 논클라이언트(캡션)를
-            // 강제 무효화·즉시 재그리기해 캡션 색이 실제로 뒤집히도록 유도한다.
             _ = RedrawWindow(handle, IntPtr.Zero, IntPtr.Zero, RedrawFrameNow);
+
+            // Win10: 이미 표시된 창은 첫 페인트 후라 ImmersiveDarkMode 변경(테마 토글)이 캡션에 바로 안 뜬다
+            // (rc=0이어도 무효). 설정창을 열면 고쳐지는 것과 동일한 원리로, 캡션을 비활성→활성(WM_NCACTIVATE)
+            // 시켜 강제 리페인트하면 새 테마 색으로 갱신된다. SourceInitialized(표시 전, IsLoaded=false)엔 불필요.
+            if (window.IsLoaded)
+            {
+                _ = SendMessage(handle, WmNcActivate, IntPtr.Zero, IntPtr.Zero);   // 비활성 캡션 그리기
+                _ = SendMessage(handle, WmNcActivate, new IntPtr(1), IntPtr.Zero); // 활성 캡션 다시 그리기(현재 테마 색)
+            }
         }
         catch (Exception)
         {
