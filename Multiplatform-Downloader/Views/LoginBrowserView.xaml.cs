@@ -15,6 +15,7 @@ public partial class LoginBrowserView : Window
     public LoginBrowserView()
     {
         InitializeComponent();
+        SourceInitialized += (_, _) => Multiplatform_Downloader.Services.ThemeService.ApplyTitleBarTo(this);
         Loaded += OnLoadedAsync;
     }
 

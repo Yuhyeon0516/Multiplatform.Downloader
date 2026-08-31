@@ -57,7 +57,7 @@
                 <TextBlock Text="Windows 연동" Style="{StaticResource Section}"/>
                 <CheckBox Content="Windows 시작 시 자동 실행" IsChecked="{Binding LaunchOnStartup}" Margin="0,4"/>
                 <CheckBox Content="트레이로 최소화된 상태로 시작" IsChecked="{Binding StartMinimized}" Margin="0,4"/>
-                <CheckBox Content="창 닫기 시 트레이로 최소화 (아니면 완전 종료)" IsChecked="{Binding CloseToTray}" Margin="0,4"/>
+                <CheckBox Content="창 닫기 시 트레이로 최소화 (끄면 창 닫기 = 완전 종료)" IsChecked="{Binding CloseToTray}" Margin="0,4"/>
                 <CheckBox Content="완료/실패 알림 (토스트)" IsChecked="{Binding NotifyOnComplete}" Margin="0,4"/>
                 <CheckBox Content="자동 다운로드 (등록하면 분석 후 바로 받기)" IsChecked="{Binding AutoStartDownload}" Margin="0,4"/>
                 <CheckBox Content="시작 시 업데이트 자동 확인" IsChecked="{Binding AutoUpdateCheck}" Margin="0,4"/>

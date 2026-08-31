@@ -126,6 +126,11 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
             Debug.WriteLine($"[Bootstrapper] SingleInstance/IPC 실패(무시하고 계속): {ex}");
         }
 
+        // 앱은 오직 트레이 '완전 종료'(또는 업데이트 설치)로만 종료된다 — 창을 닫아도 절대 꺼지지 않도록
+        // WPF 기본값 OnLastWindowClose를 OnExplicitShutdown으로 바꾼다(창 닫기·스플래시 종료로 앱이 죽지 않음).
+        if (Application.Current is not null)
+            Application.Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         base.OnStartup(sender, e);
 
         var container = Container;
@@ -192,6 +197,11 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
         var shellWindow = Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w is Views.ShellView);
         if (shellWindow is not null && Application.Current is not null)
             Application.Current.MainWindow = shellWindow;
+
+        // 최초 테마 적용(위 ThemeService.Apply)은 셸 창 생성 전에 실행되므로, 셸 표시 직후 메인 창 타이틀바를
+        // 현재 테마로 명시 적용한다(Win10 다크 캡션 = ImmersiveDarkMode).
+        if (shellWindow is not null)
+            TryRun(() => ThemeService.ApplyTitleBarTo(shellWindow));
 
         if (container is not null)
         {
@@ -292,6 +302,14 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
                 await _queuePersistence.SaveAsync(queue.Items).WaitAsync(TimeSpan.FromSeconds(3));
         }
         catch (Exception ex) { logger.Warning("Update", $"종료 전 큐 저장 실패: {ex.Message}"); }
+
+        // 설치 확인 대기(모달) 중 사용자가 트레이 '완전 종료'를 눌러 _exiting이 이미 섰다면 인스톨러를
+        // 실행하지 않는다 — 사용자는 '설치'가 아니라 '종료'를 택한 것(리뷰 High5 재진입 경합).
+        if (_exiting)
+        {
+            _installing = false;
+            return false;
+        }
 
         // 인스톨러 실행 — /SILENT + /AUTORELAUNCH(설치 후 앱 재실행, FR-U7.1). UAC 승격.
         try
@@ -415,7 +433,8 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
     private void InitializeTray(IContainer container, IAppLogger logger)
     {
         var tray = container.Resolve<TrayIconService>();
-        tray.Initialize();
+        // 이벤트 구독을 Initialize보다 먼저 한다 — 생성이 실패했다가 이후 EnsureCreated로 복구돼도
+        // 메뉴('완전 종료'·'열기' 등)/더블클릭이 반드시 배선되도록(좀비 트레이 방지, 리뷰 Critical3).
         tray.OpenRequested += (_, _) => ShowMainWindow();
         tray.SettingsRequested += (_, _) =>
         {
@@ -427,7 +446,11 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
         tray.PauseResumeAllRequested += (_, _) => container.Resolve<IDownloadQueueService>().PauseAll();
         tray.OpenFolderRequested += (_, _) => OpenDownloadFolder(container);
         tray.ExitRequested += (_, _) => ExitApplication(container);
-        logger.Info("Tray", "트레이 아이콘 초기화됨");
+
+        if (tray.Initialize())
+            logger.Info("Tray", "트레이 아이콘 초기화됨");
+        else
+            logger.Warning("Tray", $"트레이 아이콘 생성 실패 — {tray.LastError}"); // Release에서도 app.log에 남김(리뷰 Critical2)
     }
 
     private static void ConnectToast(IContainer container)
@@ -461,20 +484,61 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
         }
     }
 
+    private bool _trayHintShown;
+
     private void WireCloseToTray(IContainer container)
     {
         var window = Application.Current?.MainWindow;
         if (window is null)
             return;
         var settings = container.Resolve<ISettingsService>();
+        var logger = container.Resolve<IAppLogger>();
+
+        // OS 로그오프/종료/재시작 시에는 창 닫기를 막지 않는다 — _exiting을 세워 정상 종료(OnExit 큐 저장 보장, 리뷰 High4)
+        var app = Application.Current;
+        if (app is not null)
+            app.SessionEnding += (_, _) => _exiting = true;
+
         window.Closing += (_, args) =>
         {
-            if (settings.Current.CloseToTray && !_exiting)
+            if (_exiting)
+                return; // 완전 종료·업데이트 설치·세션 종료 진행 중 — 통과
+
+            // 토글 OFF: 창 닫기 = 완전 종료(사용자 선택)
+            if (!settings.Current.CloseToTray)
             {
-                args.Cancel = true;
+                ExitApplication(container);
+                return;
+            }
+
+            // 토글 ON: 트레이로 최소화. 단 트레이 아이콘이 실제로 존재함을 확인한 뒤에만 숨긴다 —
+            // 창도 트레이도 없는 '유령' 상태(재열기 불가) 방지(리뷰 Critical1).
+            args.Cancel = true;
+            var tray = container.Resolve<TrayIconService>();
+            if (tray.EnsureCreated())
+            {
                 window.Hide();
+                NotifyMinimizedToTrayOnce(container);
+            }
+            else
+            {
+                // 트레이 사용 불가 — 창을 숨기지 않고 유지해 앱 접근성을 보장한다.
+                logger.Warning("Tray", $"트레이 미가용 — 창을 닫지 않고 유지({tray.LastError})");
+                window.Show();
+                window.Activate();
             }
         };
+    }
+
+    /// <summary>창 닫기로 트레이 최소화됐음을 세션당 한 번만 안내(어디로 갔는지 모를까 봐).</summary>
+    private void NotifyMinimizedToTrayOnce(IContainer container)
+    {
+        if (_trayHintShown)
+            return;
+        _trayHintShown = true;
+        TryRun(() => container.Resolve<TrayIconService>().ShowNotification(
+            "트레이로 최소화됨",
+            "앱은 계속 실행 중입니다. 완전히 끄려면 트레이 아이콘을 우클릭해 '완전 종료'를 선택하세요."));
     }
 
     private static void ShowMainWindow()
@@ -505,6 +569,8 @@ internal class Bootstrapper : ParentBootstrapper<ShellViewModel>
 
     private void ExitApplication(IContainer container)
     {
+        if (_exiting)
+            return; // 이미 종료/설치 진행 중 — 중복 Dispose·Shutdown 방지(리뷰 High5)
         _exiting = true;
         TryRun(() => container.Resolve<TrayIconService>().Dispose());
         Application.Current?.Shutdown();

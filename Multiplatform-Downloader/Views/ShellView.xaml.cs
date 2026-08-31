@@ -14,6 +14,9 @@ public partial class ShellView : Window
     public ShellView()
     {
         InitializeComponent();
+        // Win10: ImmersiveDarkMode(다크 캡션)는 창이 처음 그려진 뒤 설정하면 rc=0이어도 시각적으로 반영되지
+        // 않는다(실측). 핸들 생성 시점(첫 페인트 전)에 현재 테마 타이틀바를 적용해 다크 캡션이 확실히 반영되게 한다.
+        SourceInitialized += (_, _) => Services.ThemeService.ApplyTitleBarTo(this);
     }
 
     private void OnWindowDragOver(object sender, DragEventArgs e)

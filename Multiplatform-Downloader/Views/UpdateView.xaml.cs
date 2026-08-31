@@ -7,5 +7,6 @@ public partial class UpdateView : Window
     public UpdateView()
     {
         InitializeComponent();
+        SourceInitialized += (_, _) => Multiplatform_Downloader.Services.ThemeService.ApplyTitleBarTo(this);
     }
 }

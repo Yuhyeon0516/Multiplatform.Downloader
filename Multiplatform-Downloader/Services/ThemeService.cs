@@ -35,6 +35,12 @@ internal static class ThemeService
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
 
+    [DllImport("user32.dll")]
+    private static extern bool RedrawWindow(IntPtr hWnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
+
+    // RDW_INVALIDATE | RDW_FRAME | RDW_UPDATENOW | RDW_ALLCHILDREN
+    private const uint RedrawFrameNow = 0x0001 | 0x0400 | 0x0100 | 0x0080;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct WtaOptions
     {
@@ -81,24 +87,35 @@ internal static class ThemeService
             if (handle == IntPtr.Zero)
                 return;
             var useDark = _isLight ? 0 : 1;
-            // Windows 10 1903+ = 속성 20, 1809 등 구버전 = 속성 19 (실패 시 폴백)
+            // Windows 10 1903+ = 속성 20, 1809 등 구버전 = 속성 19 (실패 시 폴백). Win10 다크 캡션은 이것만으로 그려진다.
+            // ⚠ Win10: 이 속성은 창이 '처음 그려지기 전'(SourceInitialized)에 설정해야 시각적으로 반영된다.
+            //   첫 페인트 이후 설정은 rc=0을 반환해도 무효(실측 2026-08-31) — ShellView 등은 SourceInitialized에서 호출.
             if (DwmSetWindowAttribute(handle, DwmUseImmersiveDarkMode, ref useDark, sizeof(int)) != 0)
                 _ = DwmSetWindowAttribute(handle, DwmUseImmersiveDarkModeOld, ref useDark, sizeof(int));
 
-            // 라이브 전환 시 DWM이 캡션 글자색을 갱신하지 않는 버그 —
-            // Windows 11 전용 캡션 배경/글자색 지정(테마 토큰과 일치). Win10에선 조용히 무시됨.
-            var caption = _isLight ? LightCaption : DarkCaption;
-            var text = _isLight ? LightText : DarkText;
-            _ = DwmSetWindowAttribute(handle, DwmCaptionColor, ref caption, sizeof(int));
-            _ = DwmSetWindowAttribute(handle, DwmTextColor, ref text, sizeof(int));
-
-            if (restoreCaption && IsWindows11)
+            // 캡션 배경/글자색(속성 35/36) + NoDrawCaption 복원(WTNCA)은 **Windows 11 전용**.
+            // Win10(22H2 포함)에서 속성 35/36을 설정하면 캡션 배경은 라이트(흰 바)로 남고 글자만 다크박스로 그려지는
+            // 부작용이 있다(실측 2026-08-31, 윈도우컨트롤바_버그.png). Win10은 ImmersiveDarkMode만으로 다크 캡션이 정상.
+            if (IsWindows11)
             {
+                var caption = _isLight ? LightCaption : DarkCaption;
+                var text = _isLight ? LightText : DarkText;
+                _ = DwmSetWindowAttribute(handle, DwmCaptionColor, ref caption, sizeof(int));
+                _ = DwmSetWindowAttribute(handle, DwmTextColor, ref text, sizeof(int));
+            }
+
+            if (restoreCaption)
+            {
+                // WPF-UI가 라이브 테마 Apply 중 NoDrawCaption을 설정해 네이티브 캡션(제목)이 사라진다 — 해제해 제목 복원.
+                // 전 Windows 적용(Win10 흰 박스 부작용은 캡션 색 속성 35/36을 Win11 전용으로 제한한 뒤 사라짐, 실측).
                 var options = new WtaOptions { Flags = 0, Mask = WtncaNoDrawCaption | WtncaNoDrawIcon };
                 _ = SetWindowThemeAttribute(handle, WtaNonClient, ref options, Marshal.SizeOf<WtaOptions>());
             }
 
             _ = SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0, SwpFrameRefresh);
+            // Win10: 첫 페인트 이후 ImmersiveDarkMode 변경(테마 토글)은 rc=0이어도 비적용 — 논클라이언트(캡션)를
+            // 강제 무효화·즉시 재그리기해 캡션 색이 실제로 뒤집히도록 유도한다.
+            _ = RedrawWindow(handle, IntPtr.Zero, IntPtr.Zero, RedrawFrameNow);
         }
         catch (Exception)
         {
@@ -106,9 +123,10 @@ internal static class ThemeService
         }
     }
 
-    /// <summary>특정 창의 타이틀바를 현재 테마로 맞춘다(핸들 준비된 시점에 명시 호출용 — 예: 플레이어 SourceInitialized).
-    /// Loaded 클래스 핸들러가 타이밍상 놓치는 창을 보강한다.</summary>
-    public static void ApplyTitleBarTo(Window window) => ApplyTitleBar(window);
+    /// <summary>특정 창의 타이틀바를 현재 테마로 맞춘다(핸들 준비된 시점에 명시 호출용 — 예: 플레이어 SourceInitialized,
+    /// 셸 표시 직후). Loaded 클래스 핸들러가 타이밍상 놓치는 창을 보강한다. restoreCaption:true — WPF-UI가
+    /// 라이브 Apply로 캡션을 손댔거나 최초 테마 적용 시점에 창이 아직 없던 경우(Win10 다크 흰 바 버그)를 복원.</summary>
+    public static void ApplyTitleBarTo(Window window) => ApplyTitleBar(window, restoreCaption: true);
 
     /// <summary>설정값에 따라 앱 전체 테마를 즉시 적용한다. UI 스레드에서 호출한다.</summary>
     public static void Apply(AppTheme theme)
